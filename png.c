@@ -30,6 +30,8 @@ typedef struct png {
     int width;
     int height;
 
+    int data_length;
+
     chunk_t *first_chunk;
     ihdr_t *ihdr;
 } png_t;
@@ -51,7 +53,7 @@ int png_read_header(FILE *file)
 
 chunk_t *png_read_chunk(FILE *file)
 {
-    chunk_t *chunk = malloc(sizeof(chunk_t));
+    chunk_t *chunk = calloc(1, sizeof(chunk_t));
     size_t count = fread(&chunk->header, sizeof(chunk_header_t), 1, file);
     if (count != 1) {
         free(chunk);
@@ -77,7 +79,7 @@ chunk_t *png_read_chunk(FILE *file)
 
 void png_print_chunk(chunk_t *chunk)
 {
-    printf("chunk type %c%c%c%c, size %d\n",
+    printf("Type %c%c%c%c, size %d\n",
         chunk->header.type[0], chunk->header.type[1],
         chunk->header.type[2], chunk->header.type[3],
         chunk->header.length);
@@ -91,7 +93,7 @@ png_t *png_read(FILE *file)
     }
 
     /* Allocate the png_t structure. */
-    png_t *png = malloc(sizeof(png_t));
+    png_t *png = calloc(1, sizeof(png_t));
 
     /* Loop through the file and read all the chunks. */
     chunk_t **next_chunk_ptr = &png->first_chunk;
@@ -106,7 +108,7 @@ png_t *png_read(FILE *file)
         if (strncmp(&chunk->header.type[0], "IHDR", 4) == 0) {
             png->ihdr = (ihdr_t *)chunk->data;
         } else if (strncmp(&chunk->header.type[0], "IDAT", 4) == 0) {
-            printf("data chunk\n");
+            png->data_length += chunk->header.length;
         }
     }
 
@@ -114,10 +116,39 @@ png_t *png_read(FILE *file)
     png->width = SWAP_BYTES(png->ihdr->width);
     png->height = SWAP_BYTES(png->ihdr->height);
 
-    printf("width %d height %d\n", png->width, png->height);
-
     /* Return the png_t structure. */
     return png;
+}
+
+void png_print_information(png_t *png)
+{
+    printf("Header:\n");
+
+    printf("  Width: %d px\n", png->width);
+    printf("  Height: %d px\n", png->height);
+    printf("  Bit depth: %d bpp\n", png->ihdr->depth);
+    printf("  Color type:%s%s%s\n",
+        png->ihdr->color_type & 1 ? " palette" : "",
+        png->ihdr->color_type & 2 ? " color" : "",
+        png->ihdr->color_type & 4 ? " alpha" : "");
+    printf("  Compression method: %s\n",
+        png->ihdr->compression == 0 ? "deflate" : "UNKNOWN");
+    printf("  Filter method: %s\n",
+        png->ihdr->filter == 0 ? "0" : "UNKNOWN");
+    printf("  Interlace method: %s\n",
+        png->ihdr->interlace == 0 ? "no interlace" :
+        png->ihdr->interlace == 1 ? "adam7 interlace" : "UNKNOWN");
+
+    printf("Chunks:\n");
+    chunk_t *chunk = png->first_chunk;
+    while (chunk) {
+        printf("  ");
+        png_print_chunk(chunk);
+        chunk = chunk->next_chunk;
+    }
+
+    printf("Other information:\n");
+    printf("  Total data length: %d\n", png->data_length);
 }
 
 void main(int argc, char **argv)
@@ -132,11 +163,7 @@ void main(int argc, char **argv)
         exit(1);
     }
 
-    chunk_t *chunk = png->first_chunk;
-    while (chunk) {
-        png_print_chunk(chunk);
-        chunk = chunk->next_chunk;
-    }
+    png_print_information(png);
 
     exit(0);
 }
