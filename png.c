@@ -12,7 +12,7 @@ typedef struct chunk_header {
 typedef struct chunk {
     chunk_header_t header;
     char *data;
-    struct chunk *next;
+    struct chunk *next_chunk;
 } chunk_t;
 
 typedef struct png {
@@ -43,10 +43,6 @@ chunk_t *png_read_chunk(FILE *file)
         return 0;
     }
     chunk->header.length = SWAP_BYTES(chunk->header.length);
-    printf("chunk type %c%c%c%c, size %d\n",
-        chunk->header.type[0], chunk->header.type[1],
-        chunk->header.type[2], chunk->header.type[3],
-        chunk->header.length);
     chunk->data = malloc(chunk->header.length);
     count = fread(chunk->data, sizeof(char), chunk->header.length, file);
     if (count != chunk->header.length) {
@@ -64,14 +60,55 @@ chunk_t *png_read_chunk(FILE *file)
     return chunk;
 }
 
+void png_print_chunk(chunk_t *chunk)
+{
+    printf("chunk type %c%c%c%c, size %d\n",
+        chunk->header.type[0], chunk->header.type[1],
+        chunk->header.type[2], chunk->header.type[3],
+        chunk->header.length);
+}
+
+png_t *png_read(FILE *file)
+{
+    /* Read the header. */
+    if (!png_read_header(file)) {
+        return 0;
+    }
+
+    /* Allocate the png_t structure. */
+    png_t *png = malloc(sizeof(png_t));
+
+    /* Loop through the file and read all the chunks. */
+    chunk_t **next_chunk_ptr = &png->first_chunk;
+
+    chunk_t *chunk;
+    while (chunk = png_read_chunk(file)) {
+        /* Link up the singly linked list of chunks. */
+        *next_chunk_ptr = chunk;
+        next_chunk_ptr = &chunk->next_chunk;
+    }
+
+    /* Return the png_t structure. */
+    return png;
+}
+
 void main(int argc, char **argv)
 {
     FILE *file = fopen(argv[1], "r");
-    int header_ok = png_read_header(file);
-    printf("header %s\n", header_ok ? "ok" : "not ok");
-    if (header_ok) {
-        while (png_read_chunk(file));
-    }
+
+    png_t *png = png_read(file);
     fclose(file);
+
+    if (!png) {
+        printf("Invalid png.\n");
+        exit(1);
+    }
+
+    chunk_t *chunk = png->first_chunk;
+    while (chunk) {
+        png_print_chunk(chunk);
+        chunk = chunk->next_chunk;
+    }
+
     exit(0);
 }
