@@ -1,40 +1,10 @@
-#include <string.h>
-#include <unistd.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
+#include <string.h>
+#include <unistd.h>
 
-typedef struct chunk_header {
-    uint32_t length;
-    char type[4];
-} chunk_header_t;
-
-typedef struct chunk {
-    chunk_header_t header;
-    char *data;
-    struct chunk *next_chunk;
-} chunk_t;
-
-typedef struct ihdr {
-    uint32_t width;
-    uint32_t height;
-
-    uint8_t depth;
-    uint8_t color_type;
-    uint8_t compression;
-    uint8_t filter;
-    uint8_t interlace;
-} ihdr_t;
-
-typedef struct png {
-    int width;
-    int height;
-
-    int data_length;
-
-    chunk_t *first_chunk;
-    ihdr_t *ihdr;
-} png_t;
+#include "png.h"
 
 #define SWAP_BYTES(word)    ((((word) & 0x000000ff) << 24) | \
                              (((word) & 0x0000ff00) <<  8) | \
@@ -77,14 +47,6 @@ chunk_t *png_read_chunk(FILE *file)
     return chunk;
 }
 
-void png_print_chunk(chunk_t *chunk)
-{
-    printf("Type %c%c%c%c, size %d\n",
-        chunk->header.type[0], chunk->header.type[1],
-        chunk->header.type[2], chunk->header.type[3],
-        chunk->header.length);
-}
-
 png_t *png_read(FILE *file)
 {
     /* Read the header. */
@@ -120,6 +82,14 @@ png_t *png_read(FILE *file)
     return png;
 }
 
+void png_print_chunk(chunk_t *chunk)
+{
+    printf("Type %c%c%c%c, size %d\n",
+        chunk->header.type[0], chunk->header.type[1],
+        chunk->header.type[2], chunk->header.type[3],
+        chunk->header.length);
+}
+
 void png_print_information(png_t *png)
 {
     printf("Header:\n");
@@ -149,21 +119,4 @@ void png_print_information(png_t *png)
 
     printf("Other information:\n");
     printf("  Total data length: %d\n", png->data_length);
-}
-
-void main(int argc, char **argv)
-{
-    FILE *file = fopen(argv[1], "r");
-
-    png_t *png = png_read(file);
-    fclose(file);
-
-    if (!png) {
-        printf("Invalid png.\n");
-        exit(1);
-    }
-
-    png_print_information(png);
-
-    exit(0);
 }
