@@ -15,8 +15,23 @@ typedef struct chunk {
     struct chunk *next_chunk;
 } chunk_t;
 
+typedef struct ihdr {
+    uint32_t width;
+    uint32_t height;
+
+    uint8_t depth;
+    uint8_t color_type;
+    uint8_t compression;
+    uint8_t filter;
+    uint8_t interlace;
+} ihdr_t;
+
 typedef struct png {
+    int width;
+    int height;
+
     chunk_t *first_chunk;
+    ihdr_t *ihdr;
 } png_t;
 
 #define SWAP_BYTES(word)    ((((word) & 0x000000ff) << 24) | \
@@ -86,7 +101,20 @@ png_t *png_read(FILE *file)
         /* Link up the singly linked list of chunks. */
         *next_chunk_ptr = chunk;
         next_chunk_ptr = &chunk->next_chunk;
+
+        /* Check for interesting chunks. */
+        if (strncmp(&chunk->header.type[0], "IHDR", 4) == 0) {
+            png->ihdr = (ihdr_t *)chunk->data;
+        } else if (strncmp(&chunk->header.type[0], "IDAT", 4) == 0) {
+            printf("data chunk\n");
+        }
     }
+
+    /* Extract some basic image properties. */
+    png->width = SWAP_BYTES(png->ihdr->width);
+    png->height = SWAP_BYTES(png->ihdr->height);
+
+    printf("width %d height %d\n", png->width, png->height);
 
     /* Return the png_t structure. */
     return png;
