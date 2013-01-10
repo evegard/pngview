@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "png.h"
+#include "zlib.h"
 
 #define SWAP_BYTES(word)    ((((word) & 0x000000ff) << 24) | \
                              (((word) & 0x0000ff00) <<  8) | \
@@ -70,6 +71,7 @@ png_t *png_read(FILE *file)
         if (strncmp(&chunk->header.type[0], "IHDR", 4) == 0) {
             png->ihdr = (ihdr_t *)chunk->data;
         } else if (strncmp(&chunk->header.type[0], "IDAT", 4) == 0) {
+            png->data = chunk->data;
             png->data_length += chunk->header.length;
         }
     }
@@ -77,6 +79,9 @@ png_t *png_read(FILE *file)
     /* Extract some basic image properties. */
     png->width = SWAP_BYTES(png->ihdr->width);
     png->height = SWAP_BYTES(png->ihdr->height);
+
+    /* Parse the zlib stream. */
+    png->zlib = zlib_read(png->data, png->data_length);
 
     /* Return the png_t structure. */
     return png;
@@ -119,4 +124,6 @@ void png_print_information(png_t *png)
 
     printf("Other information:\n");
     printf("  Total data length: %d\n", png->data_length);
+
+    zlib_print_information(png->zlib);
 }

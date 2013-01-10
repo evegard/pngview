@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "zlib.h"
+
 typedef struct chunk_header {
     uint32_t length;
     char type[4];
@@ -30,10 +32,12 @@ typedef struct png {
     int width;
     int height;
 
+    char *data;
     int data_length;
 
     chunk_t *first_chunk;
     ihdr_t *ihdr;
+    zlib_t *zlib;
 } png_t;
 
 png_t *png_read(FILE *file);
