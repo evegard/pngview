@@ -6,7 +6,9 @@
 
 zlib_t *zlib_read(char *data, int data_length)
 {
-    if (data_length < 2) {
+    /* We require at least 2 bytes for the header and 4 bytes for the
+     * Adler-32 checksum. */
+    if (data_length < 6) {
         return 0;
     }
 
@@ -19,8 +21,14 @@ zlib_t *zlib_read(char *data, int data_length)
         zlib->window_size = pow(2, zlib->info + 8);
     }
 
+    if (zlib->flags & 0x20) {
+        /* Preset dictionary is not allowed. */
+        free(zlib);
+        return 0;
+    }
+
     zlib->data = &data[2];
-    zlib->data_length = data_length - 2;
+    zlib->data_length = data_length - 6;
 
     return zlib;
 }
