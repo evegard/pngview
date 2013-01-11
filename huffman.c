@@ -11,6 +11,7 @@ htree_t *huffman_create_tree(int count, int *symbols, int *lengths)
     /* Find max(lengths). */
     int max_length;
     for (int i = 0; i < count; i++) {
+        printf("Length %d\n", lengths[i]);
         max_length = MAX(max_length, lengths[i]);
     }
 
@@ -93,7 +94,10 @@ htree_t *huffman_create_tree(int count, int *symbols, int *lengths)
 
 void huffman_print_tree(htree_t *root, int indentation)
 {
-    if (!root->left && !root->right) {
+    if (!root) {
+        for (int i = 0; i < indentation; i++) printf(" ");
+        printf("NULL\n");
+    } else if (!root->left && !root->right) {
         for (int i = 0; i < indentation; i++) printf(" ");
         printf("Symbol %d\n", root->symbol);
     } else {
