@@ -18,10 +18,15 @@ void main(int argc, char **argv)
     png_print_information(png);
     png_get_data(png);
 
-    for (int i = 0; i < 100; i++) {
-        printf("%02hhx  ", png->data[i]);
+    for (int row = 0; row < png->height; row++) {
+        for (int col = 0; col < png->width; col++) {
+            printf("#%02hhx%02hhx%02hhx ",
+                png->data[3 * (row * png->width + col)],
+                png->data[3 * (row * png->width + col) + 1],
+                png->data[3 * (row * png->width + col) + 2]);
+        }
+        printf("\n");
     }
-    printf("\n");
 
     exit(0);
 }

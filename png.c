@@ -100,7 +100,8 @@ png_t *png_read(FILE *file)
     png->comp_data = png_get_combined_data(png);
 
     /* Calculate the final data length for the raw pixel data. */
-    png->data_length = png->width * png->height * 3;
+    /* TODO: This calculation is very arbitrary. */
+    png->data_length = png->width * png->height * 3 * 2;
 
     /* Parse the zlib header. */
     png->zlib = zlib_read(png->comp_data, png->comp_data_length,
@@ -158,6 +159,65 @@ char *png_get_data(png_t *png)
     }
 
     printf("\nDeflating...\n\n");
-    png->data = zlib_get_data(png->zlib);
+    char *filtered = zlib_get_data(png->zlib);
+
+    printf("\nReading scanlines...\n\n");
+    char *unfiltered = png->data = malloc(png->data_length);
+    int filtered_pos = 0, unfiltered_pos = 0;
+    char black[3] = { 0, 0, 0 };
+
+    for (int row = 0; row < png->height; row++) {
+        int filter = filtered[filtered_pos++];
+        printf("Scanline %d has filter %d\n", row, filter);
+
+        for (int col = 0; col < png->width; col++) {
+            /* Pointers to neighbouring pixels in the unfiltered image. */
+            char *top, *left, *topleft;
+
+            /* Populate the top pointer. */
+            if (row > 0) {
+                top = &unfiltered[unfiltered_pos - 3*png->width];
+            } else {
+                top = &black[0];
+            }
+
+            /* Populate the left pointer. */
+            if (col > 0) {
+                left = &unfiltered[unfiltered_pos - 3];
+            } else {
+                left = &black[0];
+            }
+
+            /* Populate the topleft pointer. */
+            if (row > 0 && col > 0) {
+                topleft = &unfiltered[unfiltered_pos - 3*(png->width + 1)];
+            } else {
+                topleft = &black[0];
+            }
+            printf("col %d, "
+                "left #%02hhx%02hhx%02hhx, "
+                "top #%02hhx%02hhx%02hhx, ",
+                col, left[0], left[1], left[2], top[0], top[1], top[2]);
+            printf("unfiltered_pos %d, top index %d\n",
+                unfiltered_pos, unfiltered_pos - 3*png->width);
+
+            for (int i = 0; i < 3; i++) {
+                switch (filter) {
+                    case 1:
+                        unfiltered[unfiltered_pos + i] =
+                            filtered[filtered_pos + i] + left[i];
+                        break;
+                    case 2:
+                        unfiltered[unfiltered_pos + i] =
+                            filtered[filtered_pos + i] + top[i];
+                        break;
+                }
+            }
+
+            filtered_pos += 3;
+            unfiltered_pos += 3;
+        }
+    }
+
     return png->data;
 }
