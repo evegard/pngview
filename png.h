@@ -32,6 +32,9 @@ typedef struct png {
     int width;
     int height;
 
+    char *comp_data;
+    int comp_data_length;
+
     char *data;
     int data_length;
 
@@ -42,5 +45,6 @@ typedef struct png {
 
 png_t *png_read(FILE *file);
 void png_print_information(png_t *png);
+char *png_get_data(png_t *png);
 
 #endif

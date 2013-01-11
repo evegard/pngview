@@ -5,18 +5,18 @@
 #include "zlib.h"
 #include "deflate.h"
 
-zlib_t *zlib_read(char *data, int data_length)
+zlib_t *zlib_read(char *comp_data, int comp_data_length, int data_length)
 {
     /* We require at least 2 bytes for the header and 4 bytes for the
      * Adler-32 checksum. */
-    if (data_length < 6) {
+    if (comp_data_length < 6) {
         return 0;
     }
 
     zlib_t *zlib = calloc(1, sizeof(zlib_t));
-    zlib->method = data[0] & 0xf;
-    zlib->info = (data[0] & 0xf0) >> 4;
-    zlib->flags = data[1];
+    zlib->method = comp_data[0] & 0xf;
+    zlib->info = (comp_data[0] & 0xf0) >> 4;
+    zlib->flags = comp_data[1];
 
     if (zlib->method == 8) {
         zlib->window_size = pow(2, zlib->info + 8);
@@ -28,8 +28,10 @@ zlib_t *zlib_read(char *data, int data_length)
         return 0;
     }
 
-    zlib->data = &data[2];
-    zlib->data_length = data_length - 6;
+    zlib->comp_data = &comp_data[2];
+    zlib->comp_data_length = comp_data_length - 6;
+
+    zlib->data_length = data_length;
 
     return zlib;
 }
@@ -44,7 +46,13 @@ void zlib_print_information(zlib_t *zlib)
     printf("  Compression level: %d\n", (zlib->flags & 0xc0) >> 6);
 }
 
-char *zlib_decompress(zlib_t *zlib, int max_length)
+char *zlib_get_data(zlib_t *zlib)
 {
-    return deflate_decompress(zlib->data, zlib->data_length, max_length);
+    if (zlib->data) {
+        return zlib->data;
+    }
+
+    zlib->data = deflate_decompress(zlib->comp_data,
+        zlib->comp_data_length, zlib->data_length);
+    return zlib->data;
 }

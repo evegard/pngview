@@ -16,6 +16,12 @@ void main(int argc, char **argv)
     }
 
     png_print_information(png);
+    png_get_data(png);
+
+    for (int i = 0; i < 100; i++) {
+        printf("%02hhx  ", png->data[i]);
+    }
+    printf("\n");
 
     exit(0);
 }

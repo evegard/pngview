@@ -50,19 +50,19 @@ chunk_t *png_read_chunk(FILE *file)
 
 char *png_get_combined_data(png_t *png)
 {
-    char *data = malloc(png->data_length);
+    char *comp_data = malloc(png->comp_data_length);
     int position = 0;
 
     chunk_t *chunk = png->first_chunk;
     while (chunk) {
         if (strncmp(&chunk->header.type[0], "IDAT", 4) == 0) {
-            memcpy(&data[position], chunk->data, chunk->header.length);
+            memcpy(&comp_data[position], chunk->data, chunk->header.length);
             position += chunk->header.length;
         }
         chunk = chunk->next_chunk;
     }
 
-    return data;
+    return comp_data;
 }
 
 png_t *png_read(FILE *file)
@@ -88,7 +88,7 @@ png_t *png_read(FILE *file)
         if (strncmp(&chunk->header.type[0], "IHDR", 4) == 0) {
             png->ihdr = (ihdr_t *)chunk->data;
         } else if (strncmp(&chunk->header.type[0], "IDAT", 4) == 0) {
-            png->data_length += chunk->header.length;
+            png->comp_data_length += chunk->header.length;
         }
     }
 
@@ -97,10 +97,14 @@ png_t *png_read(FILE *file)
     png->height = SWAP_BYTES(png->ihdr->height);
 
     /* Combine all the IDAT data parts into a common data array. */
-    png->data = png_get_combined_data(png);
+    png->comp_data = png_get_combined_data(png);
 
-    /* Parse the zlib stream. */
-    png->zlib = zlib_read(png->data, png->data_length);
+    /* Calculate the final data length for the raw pixel data. */
+    png->data_length = png->width * png->height * 3;
+
+    /* Parse the zlib header. */
+    png->zlib = zlib_read(png->comp_data, png->comp_data_length,
+        png->data_length);
 
     /* Return the png_t structure. */
     return png;
@@ -142,10 +146,18 @@ void png_print_information(png_t *png)
     }
 
     printf("Other information:\n");
-    printf("  Total data length: %d\n", png->data_length);
+    printf("  Total data length: %d\n", png->comp_data_length);
 
     zlib_print_information(png->zlib);
+}
+
+char *png_get_data(png_t *png)
+{
+    if (png->data) {
+        return png->data;
+    }
 
     printf("\nDeflating...\n\n");
-    zlib_decompress(png->zlib, png->width * png->height * 3);
+    png->data = zlib_get_data(png->zlib);
+    return png->data;
 }

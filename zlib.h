@@ -8,12 +8,15 @@ typedef struct zlib {
 
     int window_size;
 
+    char *comp_data;
+    int comp_data_length;
+
     char *data;
     int data_length;
 } zlib_t;
 
-zlib_t *zlib_read(char *data, int data_length);
+zlib_t *zlib_read(char *comp_data, int comp_data_length, int data_length);
 void zlib_print_information(zlib_t *zlib);
-char *zlib_decompress(zlib_t *zlib, int max_length);
+char *zlib_get_data(zlib_t *zlib);
 
 #endif

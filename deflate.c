@@ -54,4 +54,6 @@ char *deflate_decompress(char *data, int data_length, int max_size)
             printf("  %s Huffman\n", btype == 1 ? "Fixed" : "Dynamic");
         }
     }
+
+    return buffer;
 }
