@@ -194,24 +194,26 @@ char *png_get_data(png_t *png)
             } else {
                 topleft = &black[0];
             }
-            printf("col %d, "
-                "left #%02hhx%02hhx%02hhx, "
-                "top #%02hhx%02hhx%02hhx, ",
-                col, left[0], left[1], left[2], top[0], top[1], top[2]);
-            printf("unfiltered_pos %d, top index %d\n",
-                unfiltered_pos, unfiltered_pos - 3*png->width);
+
+            /* Step through the 3 bytes of this pixel and reverse the
+             * filter used. */
+
+            /* TODO: Don't assume 24 bpp. */
 
             for (int i = 0; i < 3; i++) {
+                char filtered_byte = filtered[filtered_pos + i];
+                char unfiltered_byte;
+
                 switch (filter) {
+                    case 0:
+                        unfiltered_byte = filtered_byte; break;
                     case 1:
-                        unfiltered[unfiltered_pos + i] =
-                            filtered[filtered_pos + i] + left[i];
-                        break;
+                        unfiltered_byte = filtered_byte + left[i]; break;
                     case 2:
-                        unfiltered[unfiltered_pos + i] =
-                            filtered[filtered_pos + i] + top[i];
-                        break;
+                        unfiltered_byte = filtered_byte + top[i]; break;
                 }
+
+                unfiltered[unfiltered_pos + i] = unfiltered_byte;
             }
 
             filtered_pos += 3;
