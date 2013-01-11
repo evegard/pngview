@@ -14,23 +14,34 @@
                             ((READ_BYTE() >>     7    ) & 1))
 #define SKIP_TO_BYTE()  (cur_bit > 0 && (cur_bit = 0, cur_byte++))
 
-htree_t *deflate_get_fixed_literals_huffman_tree()
+htree_t *deflate_get_fixed_literals_htree()
 {
-    int literal_symbols[288], literal_lengths[288];
+    int symbols[288], lengths[288];
     for (int i = 0; i < 288; i++) {
-        literal_symbols[i] = i;
+        symbols[i] = i;
         if (i < 144) {
-            literal_lengths[i] = 8;
+            lengths[i] = 8;
         } else if (i < 256) {
-            literal_lengths[i] = 9;
+            lengths[i] = 9;
         } else if (i < 280) {
-            literal_lengths[i] = 7;
+            lengths[i] = 7;
         } else {
-            literal_lengths[i] = 8;
+            lengths[i] = 8;
         }
     }
 
-   return huffman_create_tree(288, literal_symbols, literal_lengths);
+   return huffman_create_tree(288, symbols, lengths);
+}
+
+htree_t *deflate_get_fixed_distances_htree()
+{
+    int symbols[32], lengths[32];
+    for (int i = 0; i < 32; i++) {
+        symbols[i] = i;
+        lengths[i] = 5;
+    }
+
+   return huffman_create_tree(32, symbols, lengths);
 }
 
 char *deflate_decompress(char *data, int data_length, int max_size)
@@ -46,8 +57,7 @@ char *deflate_decompress(char *data, int data_length, int max_size)
     while (bfinal != 1) {
         bfinal = READ_BIT();
         btype = READ_BIT();
-        btype <<= 1;
-        btype |= READ_BIT();
+        btype |= READ_BIT() << 1;
 
         printf("bfinal = %d, btype = %d\n", bfinal, btype);
 
@@ -73,7 +83,26 @@ char *deflate_decompress(char *data, int data_length, int max_size)
         } else {
             printf("  %s Huffman\n", btype == 1 ? "Fixed" : "Dynamic");
 
-            huffman_print_tree(deflate_get_fixed_literals_huffman_tree(),2);
+            htree_t *ht_literals = deflate_get_fixed_literals_htree();
+            htree_t *ht_distances = deflate_get_fixed_distances_htree();
+
+            htree_t *cur_literal, *cur_distance;
+
+            do {
+                cur_literal = ht_literals;
+                int res;
+                do {
+                    int bit = READ_BIT();
+                    printf("%d", bit);
+                    res = huffman_get_symbol(&cur_literal, bit);
+                } while (res == 0);
+
+                printf("\nLiteral/length symbol %d\n", cur_literal->symbol);
+
+                //cur_distance = ht_distances;
+                //while (!huffman_get_symbol(&cur_distance, READ_BIT()));
+                //printf("Distance symbol %d\n", cur_distance->symbol);
+            } while (cur_literal->symbol < 256);
         }
     }
 

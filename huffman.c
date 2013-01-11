@@ -105,3 +105,14 @@ void huffman_print_tree(htree_t *root, int indentation)
         huffman_print_tree(root->right, indentation + 2);
     }
 }
+
+int huffman_get_symbol(htree_t **node_ptr, int bit)
+{
+    if (bit == 0) {
+        *node_ptr = (*node_ptr)->left;
+    } else {
+        *node_ptr = (*node_ptr)->right;
+    }
+
+    return ((*node_ptr)->left == 0 && (*node_ptr)->right == 0);
+}
