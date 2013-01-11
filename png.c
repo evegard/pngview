@@ -48,6 +48,23 @@ chunk_t *png_read_chunk(FILE *file)
     return chunk;
 }
 
+char *png_get_combined_data(png_t *png)
+{
+    char *data = malloc(png->data_length);
+    int position = 0;
+
+    chunk_t *chunk = png->first_chunk;
+    while (chunk) {
+        if (strncmp(&chunk->header.type[0], "IDAT", 4) == 0) {
+            memcpy(&data[position], chunk->data, chunk->header.length);
+            position += chunk->header.length;
+        }
+        chunk = chunk->next_chunk;
+    }
+
+    return data;
+}
+
 png_t *png_read(FILE *file)
 {
     /* Read the header. */
@@ -71,7 +88,6 @@ png_t *png_read(FILE *file)
         if (strncmp(&chunk->header.type[0], "IHDR", 4) == 0) {
             png->ihdr = (ihdr_t *)chunk->data;
         } else if (strncmp(&chunk->header.type[0], "IDAT", 4) == 0) {
-            png->data = chunk->data;
             png->data_length += chunk->header.length;
         }
     }
@@ -79,6 +95,9 @@ png_t *png_read(FILE *file)
     /* Extract some basic image properties. */
     png->width = SWAP_BYTES(png->ihdr->width);
     png->height = SWAP_BYTES(png->ihdr->height);
+
+    /* Combine all the IDAT data parts into a common data array. */
+    png->data = png_get_combined_data(png);
 
     /* Parse the zlib stream. */
     png->zlib = zlib_read(png->data, png->data_length);
