@@ -14,5 +14,6 @@ typedef struct zlib {
 
 zlib_t *zlib_read(char *data, int data_length);
 void zlib_print_information(zlib_t *zlib);
+char *zlib_decompress(zlib_t *zlib);
 
 #endif

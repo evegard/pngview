@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "zlib.h"
+#include "deflate.h"
 
 zlib_t *zlib_read(char *data, int data_length)
 {
@@ -41,4 +42,9 @@ void zlib_print_information(zlib_t *zlib)
     printf("  LZ77 window size: %d\n", zlib->window_size);
     printf("  Preset dictionary: %s\n", zlib->flags & 0x20 ? "Yes" : "No");
     printf("  Compression level: %d\n", (zlib->flags & 0xc0) >> 6);
+}
+
+char *zlib_decompress(zlib_t *zlib)
+{
+    return deflate_decompress(zlib->data, zlib->data_length);
 }

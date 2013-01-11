@@ -145,4 +145,7 @@ void png_print_information(png_t *png)
     printf("  Total data length: %d\n", png->data_length);
 
     zlib_print_information(png->zlib);
+
+    printf("Data:\n");
+    zlib_decompress(png->zlib);
 }
