@@ -10,7 +10,7 @@
 #define PEEK_BIT()      ((PEEK_BYTE() >> cur_bit) & 1)
 #define READ_BIT()      (cur_bit < 7 ? \
                             ((PEEK_BYTE() >> cur_bit++) & 1) : \
-                            (READ_BYTE() & 1))
+                            ((READ_BYTE() >>     7    ) & 1))
 #define SKIP_TO_BYTE()  (cur_bit > 0 && (cur_bit = 0, cur_byte++))
 
 char *deflate_decompress(char *data, int data_length, int max_size)
