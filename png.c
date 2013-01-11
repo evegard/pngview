@@ -168,7 +168,6 @@ char *png_get_data(png_t *png)
 
     for (int row = 0; row < png->height; row++) {
         int filter = filtered[filtered_pos++];
-        printf("Scanline %d has filter %d\n", row, filter);
 
         for (int col = 0; col < png->width; col++) {
             /* Pointers to neighbouring pixels in the unfiltered image. */
@@ -205,12 +204,15 @@ char *png_get_data(png_t *png)
                 char unfiltered_byte;
 
                 switch (filter) {
-                    case 0:
-                        unfiltered_byte = filtered_byte; break;
                     case 1:
                         unfiltered_byte = filtered_byte + left[i]; break;
                     case 2:
                         unfiltered_byte = filtered_byte + top[i]; break;
+                    default:
+                        printf("Unknown filter %d\n", filter);
+                        /* Fall through. */
+                    case 0:
+                        unfiltered_byte = filtered_byte; break;
                 }
 
                 unfiltered[unfiltered_pos + i] = unfiltered_byte;
