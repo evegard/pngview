@@ -55,14 +55,14 @@ htree_t *huffman_create_tree(int count, int *symbols, int *lengths)
 
     /* Loop through all the symbols in the array. */
     for (int n = 0; n < count; n++) {
-        /* Check the symbol's code length and skip it it's zero. */
+        /* Check the symbol's code length and skip if it's zero. */
         int len = lengths[n];
         if (len == 0) {
             continue;
         }
 
-        /* Loop through all the bits of the symbol code from right to
-         * left and traverse the tree. Allocate nodes as needed. */
+        /* Loop through all the bits of the symbol code from left to
+         * right and traverse the tree. Allocate nodes as needed. */
         int symbol_code = symbol_codes[n];
         htree_t *cur_node = root;
 
