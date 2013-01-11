@@ -14,6 +14,25 @@
                             ((READ_BYTE() >>     7    ) & 1))
 #define SKIP_TO_BYTE()  (cur_bit > 0 && (cur_bit = 0, cur_byte++))
 
+htree_t *deflate_get_fixed_literals_huffman_tree()
+{
+    int literal_symbols[288], literal_lengths[288];
+    for (int i = 0; i < 288; i++) {
+        literal_symbols[i] = i;
+        if (i < 144) {
+            literal_lengths[i] = 8;
+        } else if (i < 256) {
+            literal_lengths[i] = 9;
+        } else if (i < 280) {
+            literal_lengths[i] = 7;
+        } else {
+            literal_lengths[i] = 8;
+        }
+    }
+
+   return huffman_create_tree(288, literal_symbols, literal_lengths);
+}
+
 char *deflate_decompress(char *data, int data_length, int max_size)
 {
     char *buffer = malloc(max_size * sizeof(char));
@@ -53,9 +72,8 @@ char *deflate_decompress(char *data, int data_length, int max_size)
             cur_byte += len;
         } else {
             printf("  %s Huffman\n", btype == 1 ? "Fixed" : "Dynamic");
-            int symbols[8] = { 1,2,3,4,5,6,7,8 };
-            int lengths[8] = { 3,3,3,3,3,2,4,4 };
-            huffman_print_tree(huffman_create_tree(8, symbols, lengths), 2);
+
+            huffman_print_tree(deflate_get_fixed_literals_huffman_tree(),2);
         }
     }
 
