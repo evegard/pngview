@@ -45,7 +45,63 @@ htree_t *huffman_create_tree(int count, int *symbols, int *lengths)
         int len = lengths[n];
         if (len != 0) {
             symbol_codes[n] = next_code[len]++;
-            printf("Code for %d is %x\n", symbols[n], symbol_codes[n]);
         }
+    }
+
+    /* Build a tree structure from the array of symbol codes. */
+
+    /* Allocate the root node of the tree. */
+    htree_t *root = calloc(1, sizeof(htree_t));
+
+    /* Loop through all the symbols in the array. */
+    for (int n = 0; n < count; n++) {
+        /* Check the symbol's code length and skip it it's zero. */
+        int len = lengths[n];
+        if (len == 0) {
+            continue;
+        }
+
+        /* Loop through all the bits of the symbol code from right to
+         * left and traverse the tree. Allocate nodes as needed. */
+        int symbol_code = symbol_codes[n];
+        htree_t *cur_node = root;
+
+        for (int bit_num = len - 1; bit_num >= 0; bit_num--) {
+            int bit = (symbol_code >> bit_num) & 1;
+
+            /* Maintain a pointer to the pointer referencing the subtree
+             * we want to be in. */
+            htree_t **node_ptr = bit == 0 ?
+                &cur_node->left : &cur_node->right;
+
+            /* Check if we need to allocate a node. */
+            if (*node_ptr == 0) {
+                /* Allocate a new node and store the pointer in the
+                 * spot where it should be. */
+                *node_ptr = calloc(1, sizeof(htree_t));
+            }
+
+            cur_node = *node_ptr;
+        }
+
+        /* We've reached the leaf node, so store the symbol here. */
+        cur_node->symbol = symbols[n];
+    }
+
+    return root;
+}
+
+void huffman_print_tree(htree_t *root, int indentation)
+{
+    if (!root->left && !root->right) {
+        for (int i = 0; i < indentation; i++) printf(" ");
+        printf("Symbol %d\n", root->symbol);
+    } else {
+        for (int i = 0; i < indentation; i++) printf(" ");
+        printf("0:\n");
+        huffman_print_tree(root->left, indentation + 2);
+        for (int i = 0; i < indentation; i++) printf(" ");
+        printf("1:\n");
+        huffman_print_tree(root->right, indentation + 2);
     }
 }

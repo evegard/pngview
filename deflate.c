@@ -55,7 +55,7 @@ char *deflate_decompress(char *data, int data_length, int max_size)
             printf("  %s Huffman\n", btype == 1 ? "Fixed" : "Dynamic");
             int symbols[8] = { 1,2,3,4,5,6,7,8 };
             int lengths[8] = { 3,3,3,3,3,2,4,4 };
-            huffman_create_tree(8, symbols, lengths);
+            huffman_print_tree(huffman_create_tree(8, symbols, lengths), 2);
         }
     }
 
