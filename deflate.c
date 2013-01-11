@@ -1,9 +1,10 @@
+#include <stdint.h>
 #include <stdio.h>
 
 #include "deflate.h"
 
-#define PEEK_BYTE()     (data[cur_byte])
-#define READ_BYTE()     (cur_bit = 7, data[cur_byte++])
+#define PEEK_BYTE()     ((uint8_t)data[cur_byte])
+#define READ_BYTE()     (cur_bit = 7, (uint8_t)data[cur_byte++])
 #define PEEK_BIT()      ((PEEK_BYTE() >> cur_bit) & 1)
 #define READ_BIT()      (cur_bit > 0 ? \
                             ((PEEK_BYTE() >> cur_bit--) & 1) : \
@@ -15,29 +16,31 @@ char *deflate_decompress(char *data, int data_length)
     int cur_byte = 0;
     int cur_bit = 7;
 
-    for (int i = 0; i < 5; i++) {
-        printf("Byte %d: 0x%02hhx\t\t", i, READ_BYTE());
-        printf("(cur_byte is now %d and cur_bit is %d)\n",
-            cur_byte, cur_bit);
-    }
-    printf("\n");
+    int bfinal = 0, btype;
 
-    cur_byte = 0;
-    cur_bit = 7;
+    while (bfinal != 1) {
+        bfinal = READ_BIT();
+        btype = READ_BIT();
+        btype <<= 1;
+        btype |= READ_BIT();
 
-    for (int i = 0; i < 9; i++) {
-        printf("Bit %d: %d\t\t", i, READ_BIT());
-        printf("(cur_byte is now %d and cur_bit is %d)\n",
-            cur_byte, cur_bit);
-    }
-    printf("cur_byte is %d and cur_bit is %d\n", cur_byte, cur_bit);
-    SKIP_TO_BYTE();
-    printf("Skipped to next byte\n");
-    printf("cur_byte is %d and cur_bit is %d\n", cur_byte, cur_bit);
+        printf("bfinal = %d, btype = %d\n", bfinal, btype);
 
-    for (int i = 0; i < 16; i++) {
-        printf("Bit %d: %d\t\t", i, READ_BIT());
-        printf("(cur_byte is now %d and cur_bit is %d)\n",
-            cur_byte, cur_bit);
+        if (btype == 0) {
+            printf("Uncompressed data\n");
+            SKIP_TO_BYTE();
+            uint16_t len = READ_BYTE();
+            len |= READ_BYTE() << 8;
+            uint16_t blen = READ_BYTE();
+            blen |= READ_BYTE() << 8;
+
+            if ((uint16_t)len != (uint16_t)~blen) {
+                printf("deflate error: len and blen mismatch\n");
+            }
+
+            printf("len = %hu\n", len);
+        }
+
+        break;
     }
 }
