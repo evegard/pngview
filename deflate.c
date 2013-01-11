@@ -1,20 +1,25 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "deflate.h"
 
 #define PEEK_BYTE()     ((uint8_t)data[cur_byte])
-#define READ_BYTE()     (cur_bit = 7, (uint8_t)data[cur_byte++])
+#define READ_BYTE()     (cur_bit = 0, (uint8_t)data[cur_byte++])
 #define PEEK_BIT()      ((PEEK_BYTE() >> cur_bit) & 1)
-#define READ_BIT()      (cur_bit > 0 ? \
-                            ((PEEK_BYTE() >> cur_bit--) & 1) : \
+#define READ_BIT()      (cur_bit < 7 ? \
+                            ((PEEK_BYTE() >> cur_bit++) & 1) : \
                             (READ_BYTE() & 1))
-#define SKIP_TO_BYTE()  (cur_bit < 7 && (cur_bit = 7, cur_byte++))
+#define SKIP_TO_BYTE()  (cur_bit > 0 && (cur_bit = 0, cur_byte++))
 
-char *deflate_decompress(char *data, int data_length)
+char *deflate_decompress(char *data, int data_length, int max_size)
 {
+    char *buffer = malloc(max_size * sizeof(char));
+    int pos = 0;
+
     int cur_byte = 0;
-    int cur_bit = 7;
+    int cur_bit = 0;
 
     int bfinal = 0, btype;
 
@@ -26,8 +31,10 @@ char *deflate_decompress(char *data, int data_length)
 
         printf("bfinal = %d, btype = %d\n", bfinal, btype);
 
-        if (btype == 0) {
-            printf("Uncompressed data\n");
+        if (btype == 3) {
+            printf("deflate error: invalid block type\n");
+        } else if (btype == 0) {
+            printf("  Uncompressed data\n");
             SKIP_TO_BYTE();
             uint16_t len = READ_BYTE();
             len |= READ_BYTE() << 8;
@@ -38,9 +45,13 @@ char *deflate_decompress(char *data, int data_length)
                 printf("deflate error: len and blen mismatch\n");
             }
 
-            printf("len = %hu\n", len);
-        }
+            printf("  len = %hu\n", len);
+            memcpy(&buffer[pos], &data[cur_byte], len);
 
-        break;
+            pos += len;
+            cur_byte += len;
+        } else {
+            printf("  %s Huffman\n", btype == 1 ? "Fixed" : "Dynamic");
+        }
     }
 }

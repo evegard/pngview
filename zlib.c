@@ -44,7 +44,7 @@ void zlib_print_information(zlib_t *zlib)
     printf("  Compression level: %d\n", (zlib->flags & 0xc0) >> 6);
 }
 
-char *zlib_decompress(zlib_t *zlib)
+char *zlib_decompress(zlib_t *zlib, int max_length)
 {
-    return deflate_decompress(zlib->data, zlib->data_length);
+    return deflate_decompress(zlib->data, zlib->data_length, max_length);
 }

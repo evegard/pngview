@@ -146,6 +146,6 @@ void png_print_information(png_t *png)
 
     zlib_print_information(png->zlib);
 
-    printf("Data:\n");
-    zlib_decompress(png->zlib);
+    printf("\nDeflating...\n\n");
+    zlib_decompress(png->zlib, png->width * png->height * 3);
 }
