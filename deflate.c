@@ -298,10 +298,10 @@ char *deflate_decompress(char *data, int data_length, int max_size)
         }
     }
 
-    for (int i = 0; i < 100; i++) {
-        printf("%c", PRINTABLE(buffer[i]));
-    }
-    printf("\n");
+    //for (int i = 0; i < 100; i++) {
+    //    printf("%c", PRINTABLE(buffer[i]));
+    //}
+    //printf("\n");
 
     return buffer;
 }
