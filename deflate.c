@@ -151,8 +151,10 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                 hlit += 257;
                 hdist += 1;
                 hclen += 4;
-                int cl_symbols[19] = { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5,
+                int cl_order[19] = { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5,
                     11, 4, 12, 3, 13, 2, 14, 1, 15 };
+                int cl_symbols[19] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                    11, 12, 13, 14, 15, 16, 17, 18 };
                 int cl_lengths[19] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0, 0, 0, 0 };
                 for (int i = 0; i < hclen; i++) {
@@ -165,8 +167,8 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                     }
                     printf(
                         "\n  Code length for code length symbol %d is %d.\n",
-                        cl_symbols[i], len);
-                    cl_lengths[i] = len;
+                        cl_order[i], len);
+                    cl_lengths[cl_order[i]] = len;
                 }
                 htree_t *ht_cl = huffman_create_tree(19, cl_symbols,
                     cl_lengths);
@@ -191,7 +193,7 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                             int previous = lengths[cur_len - 1];
                             printf("Repeating prev. %d for %d times.\n",
                                 previous , times);
-                            for (int i = 0; i < times&&cur_len < tot; i++) {
+                            for (int i = 0; i < times; i++) {
                                 lengths[cur_len++] = previous;
                             }
                             break;
@@ -201,7 +203,7 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                             times += 3;
                             printf("Repeating 0 for %d times.\n",
                                 times);
-                            for (int i = 0; i < times&&cur_len < tot; i++) {
+                            for (int i = 0; i < times; i++) {
                                 lengths[cur_len++] = 0;
                             }
                             break;
@@ -211,7 +213,7 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                             times += 11;
                             printf("Repeating 0 for %d times.\n",
                                 times);
-                            for (int i = 0; i < times&&cur_len < tot; i++) {
+                            for (int i = 0; i < times; i++) {
                                 lengths[cur_len++] = 0;
                             }
                             break;
@@ -223,6 +225,9 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                             break;
                     }
                 } while (cur_len < tot);
+                if (cur_len > tot) {
+                    printf("Error! Went too far!\n");
+                }
                 printf("  cur_len is %d, hlit + hdist is %d\n",
                     cur_len, tot);
 

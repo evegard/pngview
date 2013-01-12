@@ -10,9 +10,9 @@
 
 void main(int argc, char **argv)
 {
-    FILE *deflatedata = fopen("deflatedata/lorem0.gz", "r");
+    FILE *deflatedata = fopen(argv[1], "r");
     char *data = calloc(1000, sizeof(char));
-    fread(data, sizeof(char), 17, deflatedata);
+    fread(data, sizeof(char), atoi(argv[2]), deflatedata);
     fread(data, sizeof(char), 1000, deflatedata);
     deflate_decompress(data, 1000, 10000);
     exit(0);

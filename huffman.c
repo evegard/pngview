@@ -53,6 +53,7 @@ htree_t *huffman_create_tree(int count, int *symbols, int *lengths)
 
     /* Allocate the root node of the tree. */
     htree_t *root = calloc(1, sizeof(htree_t));
+    root->symbol = -1;
 
     /* Loop through all the symbols in the array. */
     for (int n = 0; n < count; n++) {
@@ -80,6 +81,7 @@ htree_t *huffman_create_tree(int count, int *symbols, int *lengths)
                 /* Allocate a new node and store the pointer in the
                  * spot where it should be. */
                 *node_ptr = calloc(1, sizeof(htree_t));
+                (*node_ptr)->symbol = -1;
             }
 
             cur_node = *node_ptr;
