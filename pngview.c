@@ -3,10 +3,19 @@
 
 #include "png.h"
 
+/* TODO: Remove. */
+#include "deflate.h"
+
 #define MIN(a, b)   ((a) < (b) ? (a) : (b))
 
 void main(int argc, char **argv)
 {
+    FILE *deflatedata = fopen("deflatedata/lorem0.gz", "r");
+    char *data = calloc(1000, sizeof(char));
+    fread(data, sizeof(char), 17, deflatedata);
+    fread(data, sizeof(char), 1000, deflatedata);
+    deflate_decompress(data, 1000, 10000);
+    exit(0);
     FILE *file = fopen(argv[1], "r");
 
     png_t *png = png_read(file);
