@@ -5,9 +5,10 @@
 
 #define MAX(a, b)   ((a) > (b) ? (a) : (b))
 
-/* Algorithm from RFC 1951 (http://tools.ietf.org/html/rfc1951#page-7). */
-htree_t *huffman_create_tree(int count, int *symbols, int *lengths)
+htree_t *huffman_create_tree(int count, int *lengths)
 {
+    /* Algorithm from RFC 1951 (http://tools.ietf.org/html/rfc1951). */
+
     /* Find max(lengths). */
     int max_length = 0;
     for (int i = 0; i < count; i++) {
@@ -87,7 +88,7 @@ htree_t *huffman_create_tree(int count, int *symbols, int *lengths)
         }
 
         /* We've reached the leaf node, so store the symbol here. */
-        cur_node->symbol = symbols[n];
+        cur_node->symbol = n;
     }
 
     /* Free the temporary structures that were allocated. */

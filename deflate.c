@@ -17,20 +17,10 @@
 
 #define PRINTABLE(c)    ((c) >= 0x20 && (c) <= 0x7e ? (c) : ('.'))
 
-int *deflate_get_symbol_sequence(int count)
-{
-    int *sequence = calloc(count, sizeof(int));
-    for (int i = 0; i < count; i++) {
-        sequence[i] = i;
-    }
-    return sequence;
-}
-
 htree_t *deflate_get_fixed_literals_htree()
 {
-    int symbols[288], lengths[288];
+    int lengths[288];
     for (int i = 0; i < 288; i++) {
-        symbols[i] = i;
         if (i < 144) {
             lengths[i] = 8;
         } else if (i < 256) {
@@ -42,18 +32,17 @@ htree_t *deflate_get_fixed_literals_htree()
         }
     }
 
-   return huffman_create_tree(288, symbols, lengths);
+   return huffman_create_tree(288, lengths);
 }
 
 htree_t *deflate_get_fixed_distances_htree()
 {
-    int symbols[32], lengths[32];
+    int lengths[32];
     for (int i = 0; i < 32; i++) {
-        symbols[i] = i;
         lengths[i] = 5;
     }
 
-   return huffman_create_tree(32, symbols, lengths);
+   return huffman_create_tree(32, lengths);
 }
 
 int deflate_get_extra_bits_for_literal(int literal)
@@ -153,8 +142,6 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                 hclen += 4;
                 int cl_order[19] = { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5,
                     11, 4, 12, 3, 13, 2, 14, 1, 15 };
-                int cl_symbols[19] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-                    11, 12, 13, 14, 15, 16, 17, 18 };
                 int cl_lengths[19] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0, 0, 0, 0 };
                 for (int i = 0; i < hclen; i++) {
@@ -165,8 +152,7 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                     //    cl_order[i], len);
                     cl_lengths[cl_order[i]] = len;
                 }
-                htree_t *ht_cl = huffman_create_tree(19, cl_symbols,
-                    cl_lengths);
+                htree_t *ht_cl = huffman_create_tree(19, cl_lengths);
                 //huffman_print_tree(ht_cl, 2);
 
                 int tot = hlit + hdist;
@@ -229,23 +215,20 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                 /* We don't need the code length Huffman tree anymore. */
                 huffman_free_tree(ht_cl);
 
-                int *symbols = deflate_get_symbol_sequence(288);
                 int *lit_lengths = &lengths[0];
                 int *dist_lengths = &lengths[hlit];
 
-                ht_literals = huffman_create_tree(hlit,symbols,lit_lengths);
+                ht_literals = huffman_create_tree(hlit, lit_lengths);
                 //printf("  Literals tree:\n");
                 //huffman_print_tree(ht_literals, 4);
 
-                ht_distances = huffman_create_tree(
-                    hdist,symbols,dist_lengths);
+                ht_distances = huffman_create_tree(hdist, dist_lengths);
                 //printf("  Distances tree:\n");
                 //huffman_print_tree(ht_distances, 4);
 
                 /* Free the data arrays used to create the Huffman
                  * trees. */
                 free(lengths);
-                free(symbols);
             }
 
             htree_t *cur_literal, *cur_distance;
