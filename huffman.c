@@ -9,7 +9,7 @@
 htree_t *huffman_create_tree(int count, int *symbols, int *lengths)
 {
     /* Find max(lengths). */
-    int max_length;
+    int max_length = 0;
     for (int i = 0; i < count; i++) {
         max_length = MAX(max_length, lengths[i]);
     }
@@ -90,6 +90,11 @@ htree_t *huffman_create_tree(int count, int *symbols, int *lengths)
         cur_node->symbol = symbols[n];
     }
 
+    /* Free the temporary structures that were allocated. */
+    free(symbol_codes);
+    free(bl_count);
+    free(next_code);
+
     return root;
 }
 
@@ -109,6 +114,17 @@ void huffman_print_tree(htree_t *root, int indentation)
         printf("1:\n");
         huffman_print_tree(root->right, indentation + 2);
     }
+}
+
+void huffman_free_tree(htree_t *root)
+{
+    if (root->left) {
+        huffman_free_tree(root->left);
+    }
+    if (root->right) {
+        huffman_free_tree(root->right);
+    }
+    free(root);
 }
 
 int huffman_get_symbol(htree_t **node_ptr, int bit)

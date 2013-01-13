@@ -226,6 +226,9 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                 printf("  cur_len is %d, hlit + hdist is %d\n",
                     cur_len, tot);
 
+                /* We don't need the code length Huffman tree anymore. */
+                huffman_free_tree(ht_cl);
+
                 int *symbols = deflate_get_symbol_sequence(288);
                 int *lit_lengths = &lengths[0];
                 int *dist_lengths = &lengths[hlit];
@@ -238,6 +241,11 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                     hdist,symbols,dist_lengths);
                 printf("  Distances tree:\n");
                 huffman_print_tree(ht_distances, 4);
+
+                /* Free the data arrays used to create the Huffman
+                 * trees. */
+                free(lengths);
+                free(symbols);
             }
 
             htree_t *cur_literal, *cur_distance;
@@ -287,6 +295,10 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                     pos += length;
                 }
             } while (cur_literal->symbol != 256);
+
+            /* Free the Huffman trees. */
+            huffman_free_tree(ht_literals);
+            huffman_free_tree(ht_distances);
         }
     }
 
