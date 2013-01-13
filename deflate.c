@@ -8,8 +8,6 @@
 #include "deflate.h"
 #include "huffman.h"
 
-#define PRINTABLE(c)    ((c) >= 0x20 && (c) <= 0x7e ? (c) : ('.'))
-
 void deflate_get_fixed_htrees(htree_t **htree_lit, htree_t **htree_dist)
 {
     int lengths[288];
@@ -77,7 +75,6 @@ int deflate_length_for_distance(int distance)
 
 int deflate_process_uncompressed(char *buf, int pos, bitstream_t *bitstream)
 {
-    printf("  Uncompressed data\n");
     skip_to_next_byte(bitstream);
 
     uint16_t len = read_byte(bitstream);
@@ -87,10 +84,9 @@ int deflate_process_uncompressed(char *buf, int pos, bitstream_t *bitstream)
     blen |= read_byte(bitstream) << 8;
 
     if ((uint16_t)len != (uint16_t)~blen) {
-        printf("deflate error: len and blen mismatch\n");
+        printf("Error: len and blen mismatch\n");
     }
 
-    printf("  len = %hu\n", len);
     memcpy(&buf[pos], &bitstream->data[bitstream->current_byte], len);
 
     pos += len;
@@ -102,27 +98,18 @@ int deflate_process_uncompressed(char *buf, int pos, bitstream_t *bitstream)
 void deflate_parse_htrees(bitstream_t *bitstream,
     htree_t **htree_lit, htree_t **htree_dist)
 {
-    int hlit = 0, hdist = 0, hclen = 0;
-    hlit = read_bits(bitstream, 5);
-    hdist = read_bits(bitstream, 5);
-    hclen = read_bits(bitstream, 4);
-    printf("  hlit = %d, hdist = %d, hclen = %d\n", hlit, hdist, hclen);
-    hlit += 257;
-    hdist += 1;
-    hclen += 4;
-    int cl_order[19] = { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3,
-        13, 2, 14, 1, 15 };
-    int cl_lengths[19] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0 };
+    int hlit = read_bits(bitstream, 5) + 257;
+    int hdist = read_bits(bitstream, 5) + 1;
+    int hclen = read_bits(bitstream, 4) + 4;
+
+    int cl_order[19] = { 16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15 };
+    int cl_lengths[19] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+
     for (int i = 0; i < hclen; i++) {
-        int len = read_bits(bitstream, 3);
-        //printf(
-        //    "  Code length for code length symbol %d is %d.\n",
-        //    cl_order[i], len);
-        cl_lengths[cl_order[i]] = len;
+        cl_lengths[cl_order[i]] = read_bits(bitstream, 3);
     }
+
     htree_t *ht_cl = huffman_create_tree(19, cl_lengths);
-    //huffman_print_tree(ht_cl, 2);
 
     int tot = hlit + hdist;
     int *lengths = calloc(tot, sizeof(int));
@@ -130,50 +117,30 @@ void deflate_parse_htrees(bitstream_t *bitstream,
 
     while (cur_len < tot) {
         htree_t *cur_cl = huffman_get_symbol(ht_cl, bitstream);
-        //printf("  Code length symbol %d. ", cur_cl->symbol);
+        int symbol = 0, repeats = 1;
 
-        int times = 0;
+        if (cur_cl->symbol == 16) {
+            /* Symbol 16: Copy previous length 3-6 times. */
+            symbol = lengths[cur_len - 1];
+            repeats = read_bits(bitstream, 2) + 3;
+        } else if (cur_cl->symbol == 17) {
+            /* Symbol 17: Repeat 0 for 3-10 times. */
+            repeats = read_bits(bitstream, 3) + 3;
+        } else if (cur_cl->symbol == 18) {
+            /* Symbol 18: Repeat 0 for 11-138 times. */
+            repeats = read_bits(bitstream, 7) + 11;
+        } else {
+            /* Otherwise: Emit length. */
+            symbol = cur_cl->symbol;
+        }
 
-        switch (cur_cl->symbol) {
-            case 16:
-                /* Copy previous length 3-6 times. */
-                times = read_bits(bitstream, 2) + 3;
-                int previous = lengths[cur_len - 1];
-                //printf("Repeating prev. %d for %d times.\n",
-                //    previous , times);
-                for (int i = 0; i < times; i++) {
-                    lengths[cur_len++] = previous;
-                }
-                break;
-            case 17:
-                /* Repeat 0 for 3-10 times. */
-                times = read_bits(bitstream, 3) + 3;
-                //printf("Repeating 0 for %d times.\n",
-                //    times);
-                for (int i = 0; i < times; i++) {
-                    lengths[cur_len++] = 0;
-                }
-                break;
-            case 18:
-                /* Repeat 0 for 11-138 times. */
-                times = read_bits(bitstream, 7) + 11;
-                //printf("Repeating 0 for %d times.\n",
-                //    times);
-                for (int i = 0; i < times; i++) {
-                    lengths[cur_len++] = 0;
-                }
-                break;
-            default:
-                /* Emit length. */
-                //printf("Length at pos %d is %d.\n",
-                //    cur_len, cur_cl->symbol);
-                lengths[cur_len++] = cur_cl->symbol;
-                break;
+        for (int i = 0; i < repeats; i++) {
+            lengths[cur_len++] = symbol;
         }
     }
 
     if (cur_len > tot) {
-        printf("Error! Went too far!\n");
+        printf("Error: Code tree lengths defined too far\n");
     }
 
     /* We don't need the code length Huffman tree anymore. */
@@ -183,12 +150,7 @@ void deflate_parse_htrees(bitstream_t *bitstream,
     int *dist_lengths = &lengths[hlit];
 
     *htree_lit = huffman_create_tree(hlit, lit_lengths);
-    //printf("  Literals tree:\n");
-    //huffman_print_tree(htree_lit, 4);
-
     *htree_dist = huffman_create_tree(hdist, dist_lengths);
-    //printf("  Distances tree:\n");
-    //huffman_print_tree(htree_dist, 4);
 
     /* Free the data arrays used to create the Huffman
      * trees. */
@@ -203,32 +165,17 @@ int deflate_process_huffman(char *buf, int pos, bitstream_t *bitstream,
     do {
         literal = huffman_get_symbol(htree_lit, bitstream);
 
-        //printf("  Literal/length symbol %d (%c)\n",
-        //    literal->symbol, PRINTABLE(literal->symbol));
-
         if (literal->symbol < 256) {
             buf[pos++] = literal->symbol;
         } else if (literal->symbol > 256) {
             int extra = deflate_extra_bits_for_literal(literal->symbol);
-
             int length = read_bits(bitstream, extra);
-            //printf("    Read %d extra bits. Length is %d + %d.\n",
-            //    extra, length, deflate_get_length_for_literal(
-            //        literal->symbol));
-
             length += deflate_length_for_literal(literal->symbol);
 
             distance = huffman_get_symbol(htree_dist, bitstream);
-            //printf("    Distance symbol %d\n",
-            //    distance->symbol);
 
             extra = deflate_extra_bits_for_distance(distance->symbol);
-
             int dist = read_bits(bitstream, extra);
-            //printf("    Read %d extra bits. Distance is %d + %d.\n",
-            //    extra, dist, deflate_get_length_for_dist(
-            //        distance->symbol));
-
             dist += deflate_length_for_distance(distance->symbol);
 
             for (int i = 0; i < length; i++) {
@@ -249,25 +196,18 @@ char *deflate_decompress(char *data, int data_length, int max_size)
     bitstream_t *bitstream = calloc(1, sizeof(bitstream_t));
     bitstream->data = data;
 
-    int bfinal = 0, btype;
+    int final, type;
 
-    while (bfinal != 1) {
-        bfinal = read_bit(bitstream);
-        btype = read_bits(bitstream, 2);
+    do {
+        final = read_bit(bitstream);
+        type = read_bits(bitstream, 2);
 
-        printf("first byte = 0x%02hhx\n", peek_byte(bitstream));
-        printf("bfinal = %d, btype = %d\n", bfinal, btype);
-
-        if (btype == 3) {
-            printf("deflate error: invalid block type\n");
-        } else if (btype == 0) {
+        if (type == 0) {
             pos = deflate_process_uncompressed(buf, pos, bitstream);
-        } else {
-            printf("  %s Huffman\n", btype == 1 ? "Fixed" : "Dynamic");
-
+        } else if (type == 1 || type == 2) {
             htree_t *htree_lit, *htree_dist;
 
-            if (btype == 1) {
+            if (type == 1) {
                 deflate_get_fixed_htrees(&htree_lit, &htree_dist);
             } else {
                 deflate_parse_htrees(bitstream, &htree_lit, &htree_dist);
@@ -279,8 +219,10 @@ char *deflate_decompress(char *data, int data_length, int max_size)
             /* Free the Huffman trees. */
             huffman_free_tree(htree_lit);
             huffman_free_tree(htree_dist);
+        } else {
+            printf("Error: Invalid deflate block type\n");
         }
-    }
+    } while (!final);
 
     return buf;
 }

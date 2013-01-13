@@ -48,8 +48,6 @@ void gui_display_image(png_t *png)
                     break;
                 }
 
-                printf("expose event\n");
-
                 XPutImage(display, window, gc, image, 0, 0, 0, 0,
                     png->width, png->height);
                 break;
