@@ -190,21 +190,21 @@ char *png_get_data(png_t *png)
 
             /* Populate the top pointer. */
             if (row > 0) {
-                top = &unfiltered[unfiltered_pos - 3*png->width];
+                top = &unfiltered[unfiltered_pos - 4*png->width];
             } else {
                 top = &black[0];
             }
 
             /* Populate the left pointer. */
             if (col > 0) {
-                left = &unfiltered[unfiltered_pos - 3];
+                left = &unfiltered[unfiltered_pos - 4];
             } else {
                 left = &black[0];
             }
 
             /* Populate the topleft pointer. */
             if (row > 0 && col > 0) {
-                topleft = &unfiltered[unfiltered_pos - 3*(png->width + 1)];
+                topleft = &unfiltered[unfiltered_pos - 4*(png->width + 1)];
             } else {
                 topleft = &black[0];
             }
@@ -242,7 +242,7 @@ char *png_get_data(png_t *png)
             }
 
             filtered_pos += 3;
-            unfiltered_pos += 3;
+            unfiltered_pos += 4;
         }
     }
 
