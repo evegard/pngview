@@ -7,15 +7,54 @@
 #include "deflate.h"
 #include "huffman.h"
 
-#define PEEK_BYTE()     ((uint8_t)data[cur_byte])
-#define READ_BYTE()     (cur_bit = 0, (uint8_t)data[cur_byte++])
-#define PEEK_BIT()      ((PEEK_BYTE() >> cur_bit) & 1)
-#define READ_BIT()      (cur_bit < 7 ? \
-                            ((PEEK_BYTE() >> cur_bit++) & 1) : \
-                            ((READ_BYTE() >>     7    ) & 1))
-#define SKIP_TO_BYTE()  (cur_bit > 0 && (cur_bit = 0, cur_byte++))
-
 #define PRINTABLE(c)    ((c) >= 0x20 && (c) <= 0x7e ? (c) : ('.'))
+
+typedef struct bitstream {
+    char *data;
+    int current_byte;
+    int current_bit;
+} bitstream_t;
+
+unsigned char peek_byte(bitstream_t *bitstream)
+{
+    return bitstream->data[bitstream->current_byte];
+}
+
+unsigned char read_byte(bitstream_t *bitstream)
+{
+    bitstream->current_bit = 0;
+    return bitstream->data[bitstream->current_byte++];
+}
+
+unsigned int peek_bit(bitstream_t *bitstream)
+{
+    return (peek_byte(bitstream) >> bitstream->current_bit) & 1;
+}
+
+unsigned int read_bit(bitstream_t *bitstream)
+{
+    if (bitstream->current_bit < 7) {
+        return (peek_byte(bitstream) >> bitstream->current_bit++) & 1;
+    } else {
+        return (read_byte(bitstream) >> 7) & 1;
+    }
+}
+
+unsigned int read_bits(bitstream_t *bitstream, int bits)
+{
+    unsigned int value = 0;
+    for (int bit = 0; bit < bits; bit++) {
+        value |= read_bit(bitstream) << bit;
+    }
+    return value;
+}
+
+void skip_to_next_byte(bitstream_t *bitstream)
+{
+    if (bitstream->current_bit > 0) {
+        read_byte(bitstream);
+    }
+}
 
 htree_t *deflate_get_fixed_literals_htree()
 {
@@ -90,38 +129,37 @@ char *deflate_decompress(char *data, int data_length, int max_size)
     char *buffer = malloc(max_size * sizeof(char));
     int pos = 0;
 
-    int cur_byte = 0;
-    int cur_bit = 0;
+    bitstream_t *bitstream = calloc(1, sizeof(bitstream_t));
+    bitstream->data = data;
 
     int bfinal = 0, btype;
 
     while (bfinal != 1) {
-        bfinal = READ_BIT();
-        btype = READ_BIT();
-        btype |= READ_BIT() << 1;
+        bfinal = read_bit(bitstream);
+        btype = read_bits(bitstream, 2);
 
-        printf("first byte = 0x%02hhx\n", PEEK_BYTE());
+        printf("first byte = 0x%02hhx\n", peek_byte(bitstream));
         printf("bfinal = %d, btype = %d\n", bfinal, btype);
 
         if (btype == 3) {
             printf("deflate error: invalid block type\n");
         } else if (btype == 0) {
             printf("  Uncompressed data\n");
-            SKIP_TO_BYTE();
-            uint16_t len = READ_BYTE();
-            len |= READ_BYTE() << 8;
-            uint16_t blen = READ_BYTE();
-            blen |= READ_BYTE() << 8;
+            skip_to_next_byte(bitstream);
+            uint16_t len = read_byte(bitstream);
+            len |= read_byte(bitstream) << 8;
+            uint16_t blen = read_byte(bitstream);
+            blen |= read_byte(bitstream) << 8;
 
             if ((uint16_t)len != (uint16_t)~blen) {
                 printf("deflate error: len and blen mismatch\n");
             }
 
             printf("  len = %hu\n", len);
-            memcpy(&buffer[pos], &data[cur_byte], len);
+            memcpy(&buffer[pos], &data[bitstream->current_byte], len);
 
             pos += len;
-            cur_byte += len;
+            bitstream->current_byte += len;
         } else {
             printf("  %s Huffman\n", btype == 1 ? "Fixed" : "Dynamic");
 
@@ -132,9 +170,9 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                 ht_distances = deflate_get_fixed_distances_htree();
             } else {
                 int hlit = 0, hdist = 0, hclen = 0;
-                for (int i = 0; i < 5; i++) hlit |= READ_BIT() << i;
-                for (int i = 0; i < 5; i++) hdist |= READ_BIT() << i;
-                for (int i = 0; i < 4; i++) hclen |= READ_BIT() << i;
+                hlit = read_bits(bitstream, 5);
+                hdist = read_bits(bitstream, 5);
+                hclen = read_bits(bitstream, 4);
                 printf("  hlit = %d, hdist = %d, hclen = %d\n",
                     hlit, hdist, hclen);
                 hlit += 257;
@@ -145,8 +183,7 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                 int cl_lengths[19] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0, 0, 0, 0 };
                 for (int i = 0; i < hclen; i++) {
-                    int len = 0;
-                    for (int j = 0; j < 3; j++) len |= READ_BIT() << j;
+                    int len = read_bits(bitstream, 3);
                     //printf(
                     //    "  Code length for code length symbol %d is %d.\n",
                     //    cl_order[i], len);
@@ -161,7 +198,7 @@ char *deflate_decompress(char *data, int data_length, int max_size)
 
                 do {
                     htree_t *cur_cl = ht_cl;
-                    while (!huffman_get_symbol(&cur_cl, READ_BIT()));
+                    while (!huffman_get_symbol(&cur_cl, read_bit(bitstream)));
                     //printf("  Code length symbol %d. ", cur_cl->symbol);
 
                     int times = 0;
@@ -169,8 +206,7 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                     switch (cur_cl->symbol) {
                         case 16:
                             /* Copy previous length 3-6 times. */
-                            for (int i=0;i<2;i++) times|=READ_BIT()<<i;
-                            times += 3;
+                            times = read_bits(bitstream, 2) + 3;
                             int previous = lengths[cur_len - 1];
                             //printf("Repeating prev. %d for %d times.\n",
                             //    previous , times);
@@ -180,8 +216,7 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                             break;
                         case 17:
                             /* Repeat 0 for 3-10 times. */
-                            for (int i=0;i<3;i++) times|=READ_BIT()<<i;
-                            times += 3;
+                            times = read_bits(bitstream, 3) + 3;
                             //printf("Repeating 0 for %d times.\n",
                             //    times);
                             for (int i = 0; i < times; i++) {
@@ -190,8 +225,7 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                             break;
                         case 18:
                             /* Repeat 0 for 11-138 times. */
-                            for (int i=0;i<7;i++) times|=READ_BIT()<<i;
-                            times += 11;
+                            times = read_bits(bitstream, 7) + 11;
                             //printf("Repeating 0 for %d times.\n",
                             //    times);
                             for (int i = 0; i < times; i++) {
@@ -235,7 +269,7 @@ char *deflate_decompress(char *data, int data_length, int max_size)
 
             do {
                 cur_literal = ht_literals;
-                while (!huffman_get_symbol(&cur_literal, READ_BIT()));
+                while (!huffman_get_symbol(&cur_literal, read_bit(bitstream)));
 
                 //printf("  Literal/length symbol %d (%c)\n",
                 //    cur_literal->symbol, PRINTABLE(cur_literal->symbol));
@@ -246,8 +280,7 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                     int extra = deflate_get_extra_bits_for_literal(
                         cur_literal->symbol);
 
-                    int length = 0;
-                    for (int i=0;i<extra;i++) length |= READ_BIT() << i;
+                    int length = read_bits(bitstream, extra);
                     //printf("    Read %d extra bits. Length is %d + %d.\n",
                     //    extra, length, deflate_get_length_for_literal(
                     //        cur_literal->symbol));
@@ -256,15 +289,14 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                         cur_literal->symbol);
 
                     cur_distance = ht_distances;
-                    while (!huffman_get_symbol(&cur_distance, READ_BIT()));
+                    while (!huffman_get_symbol(&cur_distance, read_bit(bitstream)));
                     //printf("    Distance symbol %d\n",
                     //    cur_distance->symbol);
 
                     extra = deflate_get_extra_bits_for_dist(
                         cur_distance->symbol);
 
-                    int distance = 0;
-                    for (int i=0;i<extra;i++) distance |= READ_BIT() << i;
+                    int distance = read_bits(bitstream, extra);
                     //printf("    Read %d extra bits. Distance is %d + %d.\n",
                     //    extra, distance, deflate_get_length_for_dist(
                     //        cur_distance->symbol));
