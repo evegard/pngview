@@ -153,17 +153,63 @@ void png_print_information(png_t *png)
     zlib_print_information(png->zlib);
 }
 
-/* Algorithm from RFC 2083 (http://tools.ietf.org/html/rfc2083#page-35). */
-unsigned png_paeth_predictor(unsigned a, unsigned b, unsigned c)
+int png_paeth_predictor(int a, int b, int c)
 {
-    int32_t p = a + b - c;
-    uint32_t pa = abs(p - a), pb = abs(p - b), pc = abs(p - c);
+    /* Algorithm from RFC 2083 (http://tools.ietf.org/html/rfc2083). */
+
+    int p = a + b - c;
+    int pa = abs(p - a), pb = abs(p - b), pc = abs(p - c);
+
     if (pa <= pb && pa <= pc) {
         return a;
     } else if (pb <= pc) {
         return b;
     } else {
         return c;
+    }
+}
+
+int png_unfilter_byte(int filter, int current,
+    int top, int left, int topleft)
+{
+    switch (filter) {
+        case 0: return current;
+        case 1: return current + left;
+        case 2: return current + top;
+        case 3: return current + (left + top) / 2;
+        case 4: return current + png_paeth_predictor(left, top, topleft);
+        default: printf("Unknown filter %d\n", filter); return 0;
+    }
+}
+
+void png_unfilter_data(char *in, char *out, int width, int height, int bpp)
+{
+    /* Keep track of our position in the input and the output streams. */
+    int in_pos = 0, out_pos = 0;
+
+    /* Loop through all the scanlines of the picture. */
+    for (int row = 0; row < height; row++) {
+        /* Read the filter number used for this scanline. */
+        int filter = in[in_pos++];
+
+        /* Loop through all the pixels of the scanline. */
+        for (int col = 0; col < width; col++) {
+            /* Step through the bytes of the pixel and undo the filter. */
+            for (int i = 0; i < bpp; i++) {
+                unsigned char top, left, topleft;
+
+                /* Get the values of the corresponding byte in the
+                 * neighbouring pixels in the unfiltered image. */
+                top = (row > 0 ? out[out_pos - bpp * width] : 0);
+                left = (col > 0 ? out[out_pos - bpp] : 0);
+                topleft = (row > 0 && col > 0 ?
+                    out[out_pos - bpp * (width + 1)] : 0);
+
+                /* Unfilter the byte. */
+                out[out_pos++] = png_unfilter_byte(
+                    filter, in[in_pos++], top,  left, topleft);
+            }
+        }
     }
 }
 
@@ -177,75 +223,8 @@ char *png_get_data(png_t *png)
     char *filtered = zlib_get_data(png->zlib);
 
     printf("\nReading scanlines...\n\n");
-    char *unfiltered = png->data = malloc(png->data_length);
-    int filtered_pos = 0, unfiltered_pos = 0;
-    char black[3] = { 0, 0, 0 };
-
-    for (int row = 0; row < png->height; row++) {
-        int filter = filtered[filtered_pos++];
-
-        for (int col = 0; col < png->width; col++) {
-            /* Pointers to neighbouring pixels in the unfiltered image. */
-            char *top, *left, *topleft;
-
-            /* Populate the top pointer. */
-            if (row > 0) {
-                top = &unfiltered[unfiltered_pos - 3*png->width];
-            } else {
-                top = &black[0];
-            }
-
-            /* Populate the left pointer. */
-            if (col > 0) {
-                left = &unfiltered[unfiltered_pos - 3];
-            } else {
-                left = &black[0];
-            }
-
-            /* Populate the topleft pointer. */
-            if (row > 0 && col > 0) {
-                topleft = &unfiltered[unfiltered_pos - 3*(png->width + 1)];
-            } else {
-                topleft = &black[0];
-            }
-
-            /* Step through the 3 bytes of this pixel and reverse the
-             * filter used. */
-
-            /* TODO: Don't assume 24 bpp. */
-
-            for (int i = 0; i < 3; i++) {
-                uint32_t filtered_byte = filtered[filtered_pos + i];
-                uint32_t unfiltered_byte;
-
-                switch (filter) {
-                    case 1:
-                        unfiltered_byte = filtered_byte + left[i]; break;
-                    case 2:
-                        unfiltered_byte = filtered_byte + top[i]; break;
-                    case 3:
-                        unfiltered_byte = filtered_byte +
-                            (((unsigned)(left[i]&0xff) + (unsigned)(top[i]&0xff)) / 2);
-                        break;
-                    case 4:
-                        unfiltered_byte = filtered_byte +
-                            png_paeth_predictor(left[i]&0xff,top[i]&0xff,topleft[i]&0xff);
-                        break;
-                    default:
-                        printf("Unknown filter %d\n", filter);
-                        /* Fall through. */
-                    case 0:
-                        unfiltered_byte = filtered_byte; break;
-                }
-
-                unfiltered[unfiltered_pos + i] =
-                    (unfiltered_byte % 256);
-            }
-
-            filtered_pos += 3;
-            unfiltered_pos += 3;
-        }
-    }
+    png->data = malloc(png->data_length);
+    png_unfilter_data(filtered, png->data, png->width, png->height, 3);
 
     return png->data;
 }
