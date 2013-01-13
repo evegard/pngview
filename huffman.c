@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "bitstream.h"
 #include "huffman.h"
 
 #define MAX(a, b)   ((a) > (b) ? (a) : (b))
@@ -128,13 +129,15 @@ void huffman_free_tree(htree_t *root)
     free(root);
 }
 
-int huffman_get_symbol(htree_t **node_ptr, int bit)
+htree_t *huffman_get_symbol(htree_t *root, bitstream_t* bitstream)
 {
-    if (bit == 0) {
-        *node_ptr = (*node_ptr)->left;
-    } else {
-        *node_ptr = (*node_ptr)->right;
+    while (root->left != NULL && root->right != NULL) {
+        if (read_bit(bitstream) == 0) {
+            root = root->left;
+        } else {
+            root = root->right;
+        }
     }
 
-    return ((*node_ptr)->left == 0 && (*node_ptr)->right == 0);
+    return root;
 }

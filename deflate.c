@@ -4,57 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "bitstream.h"
 #include "deflate.h"
 #include "huffman.h"
 
 #define PRINTABLE(c)    ((c) >= 0x20 && (c) <= 0x7e ? (c) : ('.'))
-
-typedef struct bitstream {
-    char *data;
-    int current_byte;
-    int current_bit;
-} bitstream_t;
-
-unsigned char peek_byte(bitstream_t *bitstream)
-{
-    return bitstream->data[bitstream->current_byte];
-}
-
-unsigned char read_byte(bitstream_t *bitstream)
-{
-    bitstream->current_bit = 0;
-    return bitstream->data[bitstream->current_byte++];
-}
-
-unsigned int peek_bit(bitstream_t *bitstream)
-{
-    return (peek_byte(bitstream) >> bitstream->current_bit) & 1;
-}
-
-unsigned int read_bit(bitstream_t *bitstream)
-{
-    if (bitstream->current_bit < 7) {
-        return (peek_byte(bitstream) >> bitstream->current_bit++) & 1;
-    } else {
-        return (read_byte(bitstream) >> 7) & 1;
-    }
-}
-
-unsigned int read_bits(bitstream_t *bitstream, int bits)
-{
-    unsigned int value = 0;
-    for (int bit = 0; bit < bits; bit++) {
-        value |= read_bit(bitstream) << bit;
-    }
-    return value;
-}
-
-void skip_to_next_byte(bitstream_t *bitstream)
-{
-    if (bitstream->current_bit > 0) {
-        read_byte(bitstream);
-    }
-}
 
 void deflate_get_fixed_htrees(htree_t **htree_lit, htree_t **htree_dist)
 {
@@ -175,8 +129,7 @@ void deflate_parse_htrees(bitstream_t *bitstream,
     int cur_len = 0;
 
     while (cur_len < tot) {
-        htree_t *cur_cl = ht_cl;
-        while (!huffman_get_symbol(&cur_cl, read_bit(bitstream)));
+        htree_t *cur_cl = huffman_get_symbol(ht_cl, bitstream);
         //printf("  Code length symbol %d. ", cur_cl->symbol);
 
         int times = 0;
@@ -248,8 +201,7 @@ int deflate_process_huffman(char *buf, int pos, bitstream_t *bitstream,
     htree_t *literal, *distance;
 
     do {
-        literal = htree_lit;
-        while (!huffman_get_symbol(&literal, read_bit(bitstream)));
+        literal = huffman_get_symbol(htree_lit, bitstream);
 
         //printf("  Literal/length symbol %d (%c)\n",
         //    literal->symbol, PRINTABLE(literal->symbol));
@@ -266,8 +218,7 @@ int deflate_process_huffman(char *buf, int pos, bitstream_t *bitstream,
 
             length += deflate_length_for_literal(literal->symbol);
 
-            distance = htree_dist;
-            while (!huffman_get_symbol(&distance, read_bit(bitstream)));
+            distance = huffman_get_symbol(htree_dist, bitstream);
             //printf("    Distance symbol %d\n",
             //    distance->symbol);
 
