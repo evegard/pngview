@@ -154,13 +154,13 @@ void png_print_information(png_t *png)
 }
 
 /* Algorithm from RFC 2083 (http://tools.ietf.org/html/rfc2083#page-35). */
-int png_paeth_predictor(int a, int b, int c)
+unsigned png_paeth_predictor(unsigned a, unsigned b, unsigned c)
 {
-    int p = a + b - c;
-    int pa = abs(p - a), pb = abs(p - b), pc = abs(p - c);
+    int32_t p = a + b - c;
+    uint32_t pa = abs(p - a), pb = abs(p - b), pc = abs(p - c);
     if (pa <= pb && pa <= pc) {
         return a;
-    } else if (pc <= pc) {
+    } else if (pb <= pc) {
         return b;
     } else {
         return c;
@@ -190,21 +190,21 @@ char *png_get_data(png_t *png)
 
             /* Populate the top pointer. */
             if (row > 0) {
-                top = &unfiltered[unfiltered_pos - 4*png->width];
+                top = &unfiltered[unfiltered_pos - 3*png->width];
             } else {
                 top = &black[0];
             }
 
             /* Populate the left pointer. */
             if (col > 0) {
-                left = &unfiltered[unfiltered_pos - 4];
+                left = &unfiltered[unfiltered_pos - 3];
             } else {
                 left = &black[0];
             }
 
             /* Populate the topleft pointer. */
             if (row > 0 && col > 0) {
-                topleft = &unfiltered[unfiltered_pos - 4*(png->width + 1)];
+                topleft = &unfiltered[unfiltered_pos - 3*(png->width + 1)];
             } else {
                 topleft = &black[0];
             }
@@ -215,8 +215,8 @@ char *png_get_data(png_t *png)
             /* TODO: Don't assume 24 bpp. */
 
             for (int i = 0; i < 3; i++) {
-                char filtered_byte = filtered[filtered_pos + i];
-                char unfiltered_byte;
+                uint32_t filtered_byte = filtered[filtered_pos + i];
+                uint32_t unfiltered_byte;
 
                 switch (filter) {
                     case 1:
@@ -225,11 +225,11 @@ char *png_get_data(png_t *png)
                         unfiltered_byte = filtered_byte + top[i]; break;
                     case 3:
                         unfiltered_byte = filtered_byte +
-                            floor((left[i] + top[i]) / 2);
+                            (((unsigned)(left[i]&0xff) + (unsigned)(top[i]&0xff)) / 2);
                         break;
                     case 4:
                         unfiltered_byte = filtered_byte +
-                            png_paeth_predictor(left[i],top[i],topleft[i]);
+                            png_paeth_predictor(left[i]&0xff,top[i]&0xff,topleft[i]&0xff);
                         break;
                     default:
                         printf("Unknown filter %d\n", filter);
@@ -238,11 +238,12 @@ char *png_get_data(png_t *png)
                         unfiltered_byte = filtered_byte; break;
                 }
 
-                unfiltered[unfiltered_pos + i] = unfiltered_byte;
+                unfiltered[unfiltered_pos + i] =
+                    (unfiltered_byte % 256);
             }
 
             filtered_pos += 3;
-            unfiltered_pos += 4;
+            unfiltered_pos += 3;
         }
     }
 
