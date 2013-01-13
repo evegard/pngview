@@ -159,14 +159,9 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                     0, 0, 0, 0, 0, 0, 0, 0 };
                 for (int i = 0; i < hclen; i++) {
                     int len = 0;
-                    printf("  ");
-                    for (int j = 0; j < 3; j++) {
-                        int bit = READ_BIT();
-                        printf("%d", bit);
-                        len |= bit << j;
-                    }
+                    for (int j = 0; j < 3; j++) len |= READ_BIT() << j;
                     printf(
-                        "\n  Code length for code length symbol %d is %d.\n",
+                        "  Code length for code length symbol %d is %d.\n",
                         cl_order[i], len);
                     cl_lengths[cl_order[i]] = len;
                 }
@@ -239,7 +234,8 @@ char *deflate_decompress(char *data, int data_length, int max_size)
                 printf("  Literals tree:\n");
                 huffman_print_tree(ht_literals, 4);
 
-                ht_distances = huffman_create_tree(hdist,symbols,dist_lengths);
+                ht_distances = huffman_create_tree(
+                    hdist,symbols,dist_lengths);
                 printf("  Distances tree:\n");
                 huffman_print_tree(ht_distances, 4);
             }
@@ -248,14 +244,9 @@ char *deflate_decompress(char *data, int data_length, int max_size)
 
             do {
                 cur_literal = ht_literals;
-                int res;
-                do {
-                    int bit = READ_BIT();
-                    printf("%d", bit);
-                    res = huffman_get_symbol(&cur_literal, bit);
-                } while (res == 0);
+                while (!huffman_get_symbol(&cur_literal, READ_BIT()));
 
-                printf("\nLiteral/length symbol %d (%c)\n",
+                printf("  Literal/length symbol %d (%c)\n",
                     cur_literal->symbol, PRINTABLE(cur_literal->symbol));
 
                 if (cur_literal->symbol < 256) {
@@ -266,7 +257,7 @@ char *deflate_decompress(char *data, int data_length, int max_size)
 
                     int length = 0;
                     for (int i=0;i<extra;i++) length |= READ_BIT() << i;
-                    printf("  Read %d extra bits. Length is %d + %d.\n",
+                    printf("    Read %d extra bits. Length is %d + %d.\n",
                         extra, length, deflate_get_length_for_literal(
                             cur_literal->symbol));
 
@@ -275,14 +266,15 @@ char *deflate_decompress(char *data, int data_length, int max_size)
 
                     cur_distance = ht_distances;
                     while (!huffman_get_symbol(&cur_distance, READ_BIT()));
-                    printf("  Distance symbol %d\n", cur_distance->symbol);
+                    printf("    Distance symbol %d\n",
+                        cur_distance->symbol);
 
                     extra = deflate_get_extra_bits_for_dist(
                         cur_distance->symbol);
 
                     int distance = 0;
                     for (int i=0;i<extra;i++) distance |= READ_BIT() << i;
-                    printf("  Read %d extra bits. Distance is %d + %d.\n",
+                    printf("    Read %d extra bits. Distance is %d + %d.\n",
                         extra, distance, deflate_get_length_for_dist(
                             cur_distance->symbol));
 
@@ -297,11 +289,6 @@ char *deflate_decompress(char *data, int data_length, int max_size)
             } while (cur_literal->symbol != 256);
         }
     }
-
-    //for (int i = 0; i < 100; i++) {
-    //    printf("%c", PRINTABLE(buffer[i]));
-    //}
-    //printf("\n");
 
     return buffer;
 }

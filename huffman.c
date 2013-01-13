@@ -11,7 +11,6 @@ htree_t *huffman_create_tree(int count, int *symbols, int *lengths)
     /* Find max(lengths). */
     int max_length;
     for (int i = 0; i < count; i++) {
-        printf("Length %d\n", lengths[i]);
         max_length = MAX(max_length, lengths[i]);
     }
 
