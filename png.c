@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -222,6 +223,10 @@ char *png_get_data(png_t *png)
                         unfiltered_byte = filtered_byte + left[i]; break;
                     case 2:
                         unfiltered_byte = filtered_byte + top[i]; break;
+                    case 3:
+                        unfiltered_byte = filtered_byte +
+                            floor((left[i] + top[i]) / 2);
+                        break;
                     case 4:
                         unfiltered_byte = filtered_byte +
                             png_paeth_predictor(left[i],top[i],topleft[i]);
