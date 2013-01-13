@@ -152,6 +152,20 @@ void png_print_information(png_t *png)
     zlib_print_information(png->zlib);
 }
 
+/* Algorithm from RFC 2083 (http://tools.ietf.org/html/rfc2083#page-35). */
+int png_paeth_predictor(int a, int b, int c)
+{
+    int p = a + b - c;
+    int pa = abs(p - a), pb = abs(p - b), pc = abs(p - c);
+    if (pa <= pb && pa <= pc) {
+        return a;
+    } else if (pc <= pc) {
+        return b;
+    } else {
+        return c;
+    }
+}
+
 char *png_get_data(png_t *png)
 {
     if (png->data) {
@@ -208,6 +222,10 @@ char *png_get_data(png_t *png)
                         unfiltered_byte = filtered_byte + left[i]; break;
                     case 2:
                         unfiltered_byte = filtered_byte + top[i]; break;
+                    case 4:
+                        unfiltered_byte = filtered_byte +
+                            png_paeth_predictor(left[i],top[i],topleft[i]);
+                        break;
                     default:
                         printf("Unknown filter %d\n", filter);
                         /* Fall through. */
