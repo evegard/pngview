@@ -6,7 +6,7 @@
 
 #define MIN(a, b)   ((a) < (b) ? (a) : (b))
 
-void main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     FILE *file = fopen(argv[1], "r");
 

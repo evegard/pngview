@@ -80,7 +80,7 @@ png_t *png_read(FILE *file)
     chunk_t **next_chunk_ptr = &png->first_chunk;
 
     chunk_t *chunk;
-    while (chunk = png_read_chunk(file)) {
+    while ((chunk = png_read_chunk(file)) != 0) {
         /* Link up the singly linked list of chunks. */
         *next_chunk_ptr = chunk;
         next_chunk_ptr = &chunk->next_chunk;

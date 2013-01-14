@@ -152,8 +152,7 @@ void deflate_parse_htrees(bitstream_t *bitstream,
     *htree_lit = huffman_create_tree(hlit, lit_lengths);
     *htree_dist = huffman_create_tree(hdist, dist_lengths);
 
-    /* Free the data arrays used to create the Huffman
-     * trees. */
+    /* Free the data arrays used to create the Huffman trees. */
     free(lengths);
 }
 
