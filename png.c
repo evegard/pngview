@@ -90,6 +90,8 @@ png_t *png_read(FILE *file)
             png->ihdr = (ihdr_t *)chunk->data;
         } else if (strncmp(&chunk->header.type[0], "IDAT", 4) == 0) {
             png->comp_data_length += chunk->header.length;
+        } else if (strncmp(&chunk->header.type[0], "PLTE", 4) == 0) {
+            png->palette_data = chunk->data;
         }
     }
 
@@ -244,7 +246,11 @@ void png_get_color_data(png_t *png)
 
             r = g = b = png->unfiltered_data[from_offset + current_byte++];
 
-            if (png->color) {
+            if (png->palette) {
+                r = png->palette_data[r * 3 + 0];
+                g = png->palette_data[g * 3 + 1];
+                b = png->palette_data[b * 3 + 2];
+            } else if (png->color) {
                 g = png->unfiltered_data[from_offset + current_byte++];
                 b = png->unfiltered_data[from_offset + current_byte++];
             }

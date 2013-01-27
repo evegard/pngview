@@ -51,6 +51,7 @@ typedef struct png {
     chunk_t *first_chunk;
     ihdr_t *ihdr;
     zlib_t *zlib;
+    char *palette_data;
 } png_t;
 
 png_t *png_read(FILE *file);
