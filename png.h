@@ -32,6 +32,13 @@ typedef struct png {
     int width;
     int height;
 
+    int depth;
+    int bpp;
+
+    int palette;
+    int color;
+    int alpha;
+
     char *comp_data;
     int comp_data_length;
 

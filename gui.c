@@ -24,11 +24,11 @@ void gui_display_image(png_t *png)
     for (int row = 0; row < png->height; row++) {
         for (int col = 0; col < png->width; col++) {
             data[(row * png->width + col) * 4] =
-                png->data[(row * png->width + col) * 3 + 2];
+                png->data[(row * png->width + col) * png->bpp + 2];
             data[(row * png->width + col) * 4 + 1] =
-                png->data[(row * png->width + col) * 3 + 1];
+                png->data[(row * png->width + col) * png->bpp + 1];
             data[(row * png->width + col) * 4 + 2] =
-                png->data[(row * png->width + col) * 3];
+                png->data[(row * png->width + col) * png->bpp];
             data[(row * png->width + col) * 4 + 3] = 0;
         }
     }
