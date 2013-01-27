@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 
 #include "png.h"
 
@@ -19,6 +20,14 @@ void gui_display_image(png_t *png)
     char title[500];
     snprintf(title, 500, "%s - pngview", png->name);
     XStoreName(display, window, title);
+
+    XSizeHints *hints = XAllocSizeHints();
+    hints->flags = PMinSize | PMaxSize;
+    hints->min_width = hints->max_width = png->width;
+    hints->min_height = hints->max_height = png->height;
+    XSetWMNormalHints(display, window, hints);
+    XFree(hints);
+
     XMapWindow(display, window);
 
     GC gc = DefaultGC(display, screen);
