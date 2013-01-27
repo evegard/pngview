@@ -29,6 +29,8 @@ typedef struct ihdr {
 } ihdr_t;
 
 typedef struct png {
+    char *name;
+
     int width;
     int height;
 
@@ -54,7 +56,7 @@ typedef struct png {
     char *palette_data;
 } png_t;
 
-png_t *png_read(FILE *file);
+png_t *png_read(char *filename, FILE *file);
 void png_print_information(png_t *png);
 char *png_get_data(png_t *png);
 

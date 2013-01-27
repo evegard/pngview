@@ -10,7 +10,7 @@ int main(int argc, char **argv)
 {
     FILE *file = fopen(argv[1], "r");
 
-    png_t *png = png_read(file);
+    png_t *png = png_read(argv[1], file);
     fclose(file);
 
     if (!png) {

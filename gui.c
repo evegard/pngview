@@ -15,6 +15,10 @@ void gui_display_image(png_t *png)
         png->width, png->height,
         0,
         black, black);
+
+    char title[500];
+    snprintf(title, 500, "%s - pngview", png->name);
+    XStoreName(display, window, title);
     XMapWindow(display, window);
 
     GC gc = DefaultGC(display, screen);

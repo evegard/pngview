@@ -66,7 +66,7 @@ char *png_get_combined_data(png_t *png)
     return comp_data;
 }
 
-png_t *png_read(FILE *file)
+png_t *png_read(char *filename, FILE *file)
 {
     /* Read the header. */
     if (!png_read_header(file)) {
@@ -75,6 +75,10 @@ png_t *png_read(FILE *file)
 
     /* Allocate the png_t structure. */
     png_t *png = calloc(1, sizeof(png_t));
+
+    /* Copy the file name into the png_t structure. */
+    png->name = malloc((strlen(filename) + 1) * sizeof(char));
+    strcpy(png->name, filename);
 
     /* Loop through the file and read all the chunks. */
     chunk_t **next_chunk_ptr = &png->first_chunk;
