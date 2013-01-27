@@ -42,6 +42,9 @@ typedef struct png {
     char *comp_data;
     int comp_data_length;
 
+    char *unfiltered_data;
+    int unfiltered_data_length;
+
     char *data;
     int data_length;
 

@@ -20,21 +20,8 @@ void gui_display_image(png_t *png)
     GC gc = DefaultGC(display, screen);
     Visual *visual = DefaultVisual(display, screen);
 
-    char *data = malloc(png->width * png->height * 4);
-    for (int row = 0; row < png->height; row++) {
-        for (int col = 0; col < png->width; col++) {
-            data[(row * png->width + col) * 4] =
-                png->data[(row * png->width + col) * png->bpp + 2];
-            data[(row * png->width + col) * 4 + 1] =
-                png->data[(row * png->width + col) * png->bpp + 1];
-            data[(row * png->width + col) * 4 + 2] =
-                png->data[(row * png->width + col) * png->bpp];
-            data[(row * png->width + col) * 4 + 3] = 0;
-        }
-    }
-
     XImage *image = XCreateImage(display, visual, 24, ZPixmap, 0,
-        data, png->width, png->height, 32, 0);
+        png->data, png->width, png->height, 32, 0);
 
     XSelectInput(display, window, ExposureMask);
 

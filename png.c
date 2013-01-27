@@ -115,7 +115,7 @@ png_t *png_read(FILE *file)
 
     /* Calculate the final data length for the raw pixel data. */
     /* TODO: This calculation is very arbitrary. */
-    png->data_length = png->width * png->height * 3 * 2;
+    png->data_length = png->width * png->height * 5;
 
     /* Combine all the IDAT data parts into a common data array. */
     png->comp_data = png_get_combined_data(png);
@@ -230,6 +230,42 @@ void png_unfilter_data(char *in, char *out, int width, int height, int bpp)
     }
 }
 
+void png_get_color_data(png_t *png)
+{
+    png->data = malloc(png->data_length);
+
+    for (int row = 0; row < png->height; row++) {
+        for (int col = 0; col < png->width; col++) {
+            unsigned char r, g, b, a, bg;
+
+            int from_offset = (row * png->width + col) * png->bpp;
+            int to_offset   = (row * png->width + col) * 4;
+            int current_byte = 0;
+
+            r = g = b = png->unfiltered_data[from_offset + current_byte++];
+
+            if (png->color) {
+                g = png->unfiltered_data[from_offset + current_byte++];
+                b = png->unfiltered_data[from_offset + current_byte++];
+            }
+
+            if (png->alpha) {
+                a = png->unfiltered_data[from_offset + current_byte++];
+                bg = (((row / 10) % 2) ^ ((col / 10) % 2)) ? 255 : 192;
+
+                r = (r * a + bg * (255 - a)) / 255;
+                g = (g * a + bg * (255 - a)) / 255;
+                b = (b * a + bg * (255 - a)) / 255;
+            }
+
+            png->data[to_offset + 0] = b > 255 ? 255 : b;
+            png->data[to_offset + 1] = g > 255 ? 255 : g;
+            png->data[to_offset + 2] = r > 255 ? 255 : r;
+            png->data[to_offset + 3] = 0;
+        }
+    }
+}
+
 char *png_get_data(png_t *png)
 {
     if (png->data) {
@@ -240,9 +276,11 @@ char *png_get_data(png_t *png)
     char *filtered = zlib_get_data(png->zlib);
 
     printf("\nReading scanlines...\n\n");
-    png->data = malloc(png->data_length);
-    png_unfilter_data(filtered, png->data,
+    png->unfiltered_data = malloc(png->data_length);
+    png_unfilter_data(filtered, png->unfiltered_data,
         png->width, png->height, png->bpp);
+
+    png_get_color_data(png);
 
     return png->data;
 }
