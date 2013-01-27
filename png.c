@@ -71,8 +71,11 @@ char *png_get_combined_data(png_t *png)
     return comp_data;
 }
 
-png_t *png_read(char *filename, FILE *file)
+png_t *png_read(char *filename)
 {
+    /* Open the file. */
+    FILE *file = fopen(filename, "r");
+
     /* Read the header. */
     if (!png_read_header(file)) {
         return 0;
@@ -134,6 +137,9 @@ png_t *png_read(char *filename, FILE *file)
     /* Parse the zlib header. */
     png->zlib = zlib_read(png->comp_data, png->comp_data_length,
         png->data_length);
+
+    /* Close the file. */
+    fclose(file);
 
     /* Return the png_t structure. */
     return png;

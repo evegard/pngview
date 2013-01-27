@@ -61,7 +61,7 @@ typedef struct png {
     char *palette_data;
 } png_t;
 
-png_t *png_read(char *filename, FILE *file);
+png_t *png_read(char *filename);
 void png_print_information(png_t *png);
 char *png_get_data(png_t *png);
 

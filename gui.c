@@ -39,8 +39,9 @@ void gui_display_image(png_t *png)
     GC gc = DefaultGC(display, screen);
     Visual *visual = DefaultVisual(display, screen);
 
+    char *image_data = png_get_data(png);
     XImage *image = XCreateImage(display, visual, 24, ZPixmap, 0,
-        png->data, png->width, png->height, 32, 0);
+        image_data, png->width, png->height, 32, 0);
 
     XSelectInput(display, window, ExposureMask);
 

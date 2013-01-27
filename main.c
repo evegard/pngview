@@ -9,14 +9,9 @@
 #include "png.h"
 #include "gui.h"
 
-#define MIN(a, b)   ((a) < (b) ? (a) : (b))
-
 int main(int argc, char **argv)
 {
-    FILE *file = fopen(argv[1], "r");
-
-    png_t *png = png_read(argv[1], file);
-    fclose(file);
+    png_t *png = png_read(argv[1]);
 
     if (!png) {
         printf("Invalid png.\n");
@@ -24,8 +19,6 @@ int main(int argc, char **argv)
     }
 
     png_print_information(png);
-    png_get_data(png);
-
     gui_display_image(png);
 
     exit(0);
