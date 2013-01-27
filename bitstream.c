@@ -1,3 +1,8 @@
+/*
+ * pngview - a standalone PNG viewer
+ * Copyright 2013 Vegard Edvardsen
+ */
+
 #include "bitstream.h"
 
 unsigned char peek_byte(bitstream_t *bitstream)

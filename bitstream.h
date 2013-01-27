@@ -1,3 +1,8 @@
+/*
+ * pngview - a standalone PNG viewer
+ * Copyright 2013 Vegard Edvardsen
+ */
+
 #ifndef BITSTREAM_H
 #define BITSTREAM_H
 

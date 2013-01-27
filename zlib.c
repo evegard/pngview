@@ -1,3 +1,8 @@
+/*
+ * pngview - a standalone PNG viewer
+ * Copyright 2013 Vegard Edvardsen
+ */
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
