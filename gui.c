@@ -18,7 +18,8 @@ void gui_display_image(png_t *png)
         black, black);
 
     char title[500];
-    snprintf(title, 500, "%s - pngview", png->name);
+    snprintf(title, 500, "%s - %dx%d - pngview",
+        png->name, png->width, png->height);
     XStoreName(display, window, title);
 
     XSizeHints *hints = XAllocSizeHints();
